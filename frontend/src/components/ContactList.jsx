@@ -4,7 +4,7 @@ import UsersLoadingSkeleton from "./UsersLoadingSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { UsersIcon } from "lucide-react";
 
-function ContactList() {
+function ContactList({ searchQuery = "" }) {
   const { getAllContacts, allContacts, setSelectedUser, isUsersLoading } =
     useChatStore();
   const { onlineUsers } = useAuthStore();
@@ -13,11 +13,17 @@ function ContactList() {
     getAllContacts();
   }, [getAllContacts]);
 
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filteredContacts = allContacts.filter((contact) => {
+    if (!normalizedQuery) return true;
+    return (contact.fullName || "").toLowerCase().includes(normalizedQuery);
+  });
+
   if (isUsersLoading) return <UsersLoadingSkeleton />;
-  if (allContacts.length === 0) {
+  if (filteredContacts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-        <div className="w-16 h-16 rounded-full border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 flex items-center justify-center">
+        <div className="w-16 h-16 rounded-full border border-[var(--panel-border)] bg-[var(--panel-soft)] flex items-center justify-center">
           <UsersIcon className="w-8 h-8 text-brand-500" />
         </div>
         <div>
@@ -34,10 +40,11 @@ function ContactList() {
 
   return (
     <>
-      {allContacts.map((contact) => (
+      {filteredContacts.map((contact) => (
         <div
           key={contact._id}
-          className="rounded-lg border border-slate-200 bg-white p-4 cursor-pointer hover:bg-slate-50 transition-colors duration-150 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel-bg)]/90 p-4 cursor-pointer hover:bg-[var(--panel-soft)] transition-all duration-200 backdrop-blur-xl"
+          style={{ boxShadow: "var(--clay-shadow-raised)" }}
           onClick={() => setSelectedUser(contact)}
         >
           <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 import express from "express";
 import {
   acceptFriendRequest,
+  deleteMessage,
   getDiscoverUsers,
   getAllContacts,
   getChatPartners,
@@ -28,5 +29,6 @@ router.patch("/requests/:id/reject", rejectFriendRequest);
 router.get("/chats", getChatPartners);
 router.get("/:id", getMessagesByUserId);
 router.post("/send/:id", sendMessage);
+router.delete("/:id", deleteMessage);
 
 export default router;

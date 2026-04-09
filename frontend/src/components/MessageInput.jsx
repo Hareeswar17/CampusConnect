@@ -11,7 +11,8 @@ function MessageInput() {
 
   const fileInputRef = useRef(null);
 
-  const { sendMessage, isSoundEnabled } = useChatStore();
+  const { sendMessage, isSoundEnabled, replyingTo, clearReplyingTo } =
+    useChatStore();
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -23,7 +24,7 @@ function MessageInput() {
       image: imagePreview,
     });
     setText("");
-    setImagePreview("");
+    setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -45,18 +46,39 @@ function MessageInput() {
   };
 
   return (
-    <div className="p-4 border-t border-slate-200 bg-white dark:border-zinc-800 dark:bg-black">
+    <div
+      className="p-4 border-t border-[var(--panel-border)] bg-[var(--panel-bg)]/95 backdrop-blur-xl"
+      style={{ boxShadow: "var(--clay-shadow-raised)" }}
+    >
+      {replyingTo ? (
+        <div className="max-w-3xl mx-auto mb-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel-soft)]/90 p-2 backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-brand-600 dark:text-brand-400">
+              Reply mode
+            </p>
+
+            <button
+              type="button"
+              onClick={clearReplyingTo}
+              className="rounded-md p-1 text-slate-500 hover:bg-white/70 dark:text-zinc-400 dark:hover:bg-black/20"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {imagePreview && (
         <div className="max-w-3xl mx-auto mb-3 flex items-center">
           <div className="relative">
             <img
               src={imagePreview}
               alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-slate-300 dark:border-zinc-700"
+              className="w-20 h-20 object-cover rounded-lg border border-[var(--panel-border)]"
             />
             <button
               onClick={removeImage}
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-700 dark:text-zinc-200 hover:bg-slate-200 dark:hover:bg-zinc-800 transition-colors duration-150"
+              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--panel-soft)] flex items-center justify-center text-slate-700 dark:text-zinc-200 hover:bg-white/70 dark:hover:bg-black/20 transition-colors duration-150"
               type="button"
             >
               <XIcon className="w-4 h-4" />
@@ -76,7 +98,7 @@ function MessageInput() {
             setText(e.target.value);
             isSoundEnabled && playRandomKeyStrokeSound();
           }}
-          className="flex-1 rounded-lg border border-slate-300 bg-white py-2 px-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-500"
+          className="flex-1 rounded-xl border border-[var(--panel-border)] bg-[var(--clay-surface)]/90 py-2 px-4 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 backdrop-blur-sm"
           placeholder="Type your message..."
         />
 
@@ -91,7 +113,7 @@ function MessageInput() {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`rounded-lg border border-slate-300 dark:border-zinc-700 px-4 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-900 transition-colors duration-150 ${
+          className={`rounded-xl border border-[var(--panel-border)] px-4 text-slate-600 dark:text-zinc-300 hover:bg-white/70 dark:hover:bg-black/20 transition-colors duration-150 ${
             imagePreview ? "text-brand-500 dark:text-brand-500" : ""
           }`}
         >
@@ -100,7 +122,12 @@ function MessageInput() {
         <button
           type="submit"
           disabled={!text.trim() && !imagePreview}
-          className="bg-brand-500 text-white rounded-lg px-4 py-2 font-medium hover:bg-brand-600 transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-white rounded-xl px-4 py-2 font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            background:
+              "linear-gradient(135deg, var(--neon-accent) 0%, var(--neon-accent-2) 100%)",
+            boxShadow: "var(--neon-glow)",
+          }}
         >
           <SendIcon className="w-5 h-5" />
         </button>

@@ -20,6 +20,40 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    replyTo: {
+      messageId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Message",
+      },
+      text: {
+        type: String,
+        trim: true,
+        maxlength: 400,
+      },
+      image: {
+        type: Boolean,
+        default: false,
+      },
+      senderId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    },
+    isForwarded: {
+      type: Boolean,
+      default: false,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    isRead: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

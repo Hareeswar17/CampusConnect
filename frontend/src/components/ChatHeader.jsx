@@ -20,10 +20,10 @@ function ChatHeader() {
   }, [setSelectedUser]);
 
   return (
-    <div className="flex justify-between items-center border-b border-slate-200 bg-white max-h-[84px] px-6 flex-1 dark:border-zinc-800 dark:bg-black">
-      <div className="flex items-center space-x-3">
+    <div className="h-[72px] px-4 border-b border-[var(--clay-border)] bg-transparent flex items-center justify-between gap-3 shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
         <div className={`avatar ${isOnline ? "online" : "offline"}`}>
-          <div className="w-12 rounded-full">
+          <div className="size-11 rounded-full ring-1 ring-[var(--panel-border)] overflow-hidden">
             <img
               src={selectedUser.profilePic || "/avatar.png"}
               alt={selectedUser.fullName}
@@ -31,11 +31,11 @@ function ChatHeader() {
           </div>
         </div>
 
-        <div>
-          <h3 className="text-slate-900 dark:text-slate-100 font-medium">
+        <div className="min-w-0">
+          <h3 className="text-slate-900 dark:text-slate-100 font-semibold text-sm md:text-base leading-tight truncate">
             {selectedUser.fullName}
           </h3>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">
+          <p className="text-slate-600 dark:text-slate-400 text-xs truncate">
             {isOnline ? "Online" : "Offline"}
           </p>
         </div>
@@ -43,7 +43,7 @@ function ChatHeader() {
 
       <button
         onClick={() => setSelectedUser(null)}
-        className="rounded-md p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-200 transition-colors duration-150"
+        className="rounded-xl p-2 text-slate-500 hover:bg-white/70 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-black/25 dark:hover:text-zinc-200 transition-colors duration-150"
       >
         <XIcon className="w-5 h-5 cursor-pointer" />
       </button>

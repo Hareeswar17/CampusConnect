@@ -12,6 +12,7 @@ export const useChatStore = create((set, get) => ({
   messages: [],
   activeTab: "chats",
   selectedUser: null,
+  replyingTo: null,
   isUsersLoading: false,
   isDiscoverLoading: false,
   isMessagesLoading: false,
@@ -23,7 +24,18 @@ export const useChatStore = create((set, get) => ({
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
-  setSelectedUser: (selectedUser) => set({ selectedUser }),
+  setReplyingTo: (message) => set({ replyingTo: message }),
+  clearReplyingTo: () => set({ replyingTo: null }),
+  setSelectedUser: (selectedUser) =>
+    set((state) => ({
+      selectedUser,
+      replyingTo: null,
+      chats: selectedUser
+        ? state.chats.map((chat) =>
+            chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
+          )
+        : state.chats,
+    })),
 
   getAllContacts: async () => {
     set({ isUsersLoading: true });
@@ -114,7 +126,12 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
-      set({ messages: res.data });
+      set((state) => ({
+        messages: res.data,
+        chats: state.chats.map((chat) =>
+          chat._id === userId ? { ...chat, unreadCount: 0 } : chat
+        ),
+      }));
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
     } finally {
@@ -123,7 +140,7 @@ export const useChatStore = create((set, get) => ({
   },
 
   sendMessage: async (messageData) => {
-    const { selectedUser, messages } = get();
+    const { selectedUser, messages, replyingTo } = get();
     const { authUser } = useAuthStore.getState();
 
     const tempId = `temp-${Date.now()}`;
@@ -134,6 +151,15 @@ export const useChatStore = create((set, get) => ({
       receiverId: selectedUser._id,
       text: messageData.text,
       image: messageData.image,
+      replyTo: replyingTo
+        ? {
+            messageId: replyingTo._id,
+            text: replyingTo.text || "",
+            image: Boolean(replyingTo.image),
+            senderId: replyingTo.senderId,
+          }
+        : undefined,
+      isForwarded: Boolean(messageData.isForwarded),
       createdAt: new Date().toISOString(),
       isOptimistic: true, // flag to identify optimistic messages (optional)
     };
@@ -141,8 +167,30 @@ export const useChatStore = create((set, get) => ({
     set({ messages: [...messages, optimisticMessage] });
 
     try {
-      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
-      set({ messages: messages.concat(res.data) });
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, {
+        ...messageData,
+        replyTo: replyingTo
+          ? {
+              messageId: replyingTo._id,
+              text: replyingTo.text || "",
+              image: Boolean(replyingTo.image),
+              senderId: replyingTo.senderId,
+            }
+          : undefined,
+      });
+
+      set({ replyingTo: null });
+
+      set((state) => {
+        const hasTempMessage = state.messages.some((msg) => msg._id === tempId);
+        if (!hasTempMessage) {
+          return { messages: state.messages.concat(res.data) };
+        }
+
+        return {
+          messages: state.messages.map((msg) => (msg._id === tempId ? res.data : msg)),
+        };
+      });
     } catch (error) {
       // remove optimistic message on failure
       set({ messages: messages });
@@ -150,19 +198,85 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  subscribeToMessages: () => {
-    const { selectedUser, isSoundEnabled } = get();
-    if (!selectedUser) return;
+  deleteMessage: async (messageId) => {
+    try {
+      await axiosInstance.delete(`/messages/${messageId}`);
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id === messageId
+            ? {
+                ...msg,
+                isDeleted: true,
+                text: "",
+                image: null,
+                replyTo: null,
+                isForwarded: false,
+              }
+            : msg
+        ),
+      }));
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to delete message");
+    }
+  },
 
+  forwardMessage: async ({ targetUserId, text, image }) => {
+    try {
+      const { selectedUser } = get();
+      const payload = {
+        text: (text || "").trim(),
+        image,
+        isForwarded: true,
+      };
+
+      const res = await axiosInstance.post(`/messages/send/${targetUserId}`, payload);
+
+      if (selectedUser && selectedUser._id === targetUserId) {
+        set((state) => ({ messages: [...state.messages, res.data] }));
+      }
+
+      await get().getMyChatPartners();
+      toast.success("Message forwarded");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to forward message");
+    }
+  },
+
+  subscribeToMessages: () => {
+    const { isSoundEnabled } = get();
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+      const { selectedUser, messages, chats } = get();
+      const isMessageSentFromSelectedUser = selectedUser
+        ? newMessage.senderId === selectedUser._id
+        : false;
 
-      const currentMessages = get().messages;
-      set({ messages: [...currentMessages, newMessage] });
+      if (isMessageSentFromSelectedUser) {
+        set({ messages: [...messages, newMessage] });
+      }
+
+      if (!isMessageSentFromSelectedUser) {
+        const senderId = newMessage.senderId;
+        const senderAlreadyInChats = chats.some((chat) => chat._id === senderId);
+
+        if (senderAlreadyInChats) {
+          set((state) => ({
+            chats: state.chats.map((chat) =>
+              chat._id === senderId
+                ? {
+                    ...chat,
+                    unreadCount: (chat.unreadCount || 0) + 1,
+                  }
+                : chat
+            ),
+          }));
+        } else {
+          get().getMyChatPartners();
+        }
+      }
 
       if (isSoundEnabled) {
         const notificationSound = new Audio("/sounds/notification.mp3");
@@ -171,11 +285,44 @@ export const useChatStore = create((set, get) => ({
         notificationSound.play().catch((e) => console.log("Audio play failed:", e));
       }
     });
+
+    socket.on("messagesRead", ({ messageIds }) => {
+      if (!Array.isArray(messageIds) || messageIds.length === 0) return;
+
+      const messageIdSet = new Set(messageIds.map((id) => id.toString()));
+
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          messageIdSet.has(msg._id?.toString()) ? { ...msg, isRead: true } : msg
+        ),
+      }));
+    });
+
+    socket.on("messageDeleted", ({ messageId }) => {
+      if (!messageId) return;
+
+      set((state) => ({
+        messages: state.messages.map((msg) =>
+          msg._id?.toString() === messageId.toString()
+            ? {
+                ...msg,
+                isDeleted: true,
+                text: "",
+                image: null,
+                replyTo: null,
+                isForwarded: false,
+              }
+            : msg
+        ),
+      }));
+    });
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
     socket.off("newMessage");
+    socket.off("messagesRead");
+    socket.off("messageDeleted");
   },
 }));

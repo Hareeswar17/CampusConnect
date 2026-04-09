@@ -2,9 +2,62 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-bg: radial-gradient(circle at 18% 18%, #f3e8ff 0%, #dbeafe 36%, #ecfeff 72%, #eff6ff 100%);
+  --app-fg: #0f172a;
+  --clay-surface: rgba(255, 255, 255, 0.62);
+  --clay-border: rgba(255, 255, 255, 0.74);
+  --panel-bg: rgba(255, 255, 255, 0.58);
+  --panel-soft: rgba(248, 250, 255, 0.76);
+  --panel-border: rgba(255, 255, 255, 0.7);
+  --chat-canvas: rgba(236, 242, 255, 0.65);
+  --chat-canvas-soft: rgba(248, 250, 255, 0.8);
+  --chat-canvas-dot: rgba(99, 102, 241, 0.08);
+  --bubble-self-bg: rgba(191, 219, 254, 0.9);
+  --bubble-self-fg: #020617;
+  --bubble-self-shadow: var(--clay-shadow-raised);
+  --bubble-peer-bg: rgba(255, 255, 255, 0.52);
+  --bubble-peer-fg: #0f172a;
+  --floating-bg: rgba(255, 255, 255, 0.76);
+  --floating-border: rgba(255, 255, 255, 0.8);
+  --clay-shadow-raised: 0 20px 46px rgba(99, 102, 241, 0.18),
+    0 8px 20px rgba(30, 41, 59, 0.08);
+  --neon-accent: #60a5fa;
+  --neon-accent-2: #a78bfa;
+  --neon-glow: 0 0 0 1px rgba(96, 165, 250, 0.34), 0 0 24px rgba(96, 165, 250, 0.25), 0 0 44px rgba(167, 139, 250, 0.16);
+}
+
+.dark {
+  --app-bg: radial-gradient(circle at 14% 10%, #142a63 0%, #0b1332 36%, #090f26 68%, #060912 100%);
+  --app-fg: #e6ecff;
+  --clay-surface: rgba(14, 24, 48, 0.7);
+  --clay-border: rgba(71, 85, 105, 0.38);
+  --panel-bg: rgba(15, 25, 52, 0.66);
+  --panel-soft: rgba(10, 18, 40, 0.62);
+  --panel-border: rgba(71, 85, 105, 0.34);
+  --chat-canvas: rgba(7, 12, 30, 0.66);
+  --chat-canvas-soft: rgba(10, 18, 42, 0.5);
+  --chat-canvas-dot: rgba(96, 165, 250, 0.12);
+  --bubble-self-bg: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%);
+  --bubble-self-fg: #e6ecff;
+  --bubble-self-shadow: var(--clay-shadow-raised);
+  --bubble-peer-bg: rgba(255, 255, 255, 0.08);
+  --bubble-peer-fg: #e6ecff;
+  --floating-bg: rgba(13, 22, 45, 0.86);
+  --floating-border: rgba(148, 163, 184, 0.24);
+  --clay-shadow-raised: 0 26px 56px rgba(4, 7, 20, 0.62),
+    0 10px 26px rgba(30, 64, 175, 0.2);
+  --neon-accent: #60a5fa;
+  --neon-accent-2: #a78bfa;
+  --neon-glow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 0 30px rgba(96, 165, 250, 0.28), 0 0 52px rgba(167, 139, 250, 0.22);
+}
+
 @layer base {
   body {
-    @apply bg-slate-100 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    @apply antialiased;
+    background: var(--app-bg);
+    color: var(--app-fg);
+    transition: background-color 200ms ease, color 200ms ease;
   }
 }
 
@@ -30,4 +83,13 @@
 
 .auth-link {
   @apply inline-block rounded-lg px-4 py-2 text-sm text-brand-600 transition-colors duration-150 hover:text-brand-500 dark:text-brand-500 dark:hover:text-brand-500;
+}
+
+.chat-theme-canvas {
+  background-color: var(--chat-canvas);
+  background-image:
+    radial-gradient(circle at 20px 20px, var(--chat-canvas-dot) 1px, transparent 1px),
+    radial-gradient(circle at 90px 70px, var(--chat-canvas-dot) 1px, transparent 1px),
+    linear-gradient(160deg, var(--chat-canvas-soft) 0%, var(--chat-canvas) 100%);
+  background-size: 120px 120px, 120px 120px, auto;
 }
