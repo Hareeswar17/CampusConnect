@@ -8,10 +8,19 @@ import PageLoader from "./components/PageLoader";
 
 import { Toaster } from "react-hot-toast";
 import { useThemeStore } from "./store/useThemeStore";
+import { setAuthTokenGetter } from "./lib/axios";
+import { useAuthStore } from "./store/useAuthStore";
 
 function App() {
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const { themeMode } = useThemeStore();
+  const {
+    authUser,
+    setClerkTokenGetter,
+    connectSocket,
+    disconnectSocket,
+    clearAuth,
+  } = useAuthStore();
 
   useEffect(() => {
     const root = document.documentElement;
@@ -19,6 +28,33 @@ function App() {
     root.classList.toggle("dark", isDark);
     root.style.colorScheme = isDark ? "dark" : "light";
   }, [themeMode]);
+
+  useEffect(() => {
+    const tokenGetter = async () => getToken?.();
+    setAuthTokenGetter(tokenGetter);
+    setClerkTokenGetter(tokenGetter);
+  }, [getToken, setClerkTokenGetter]);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      clearAuth();
+      disconnectSocket();
+      return;
+    }
+
+    if (authUser) {
+      connectSocket();
+    }
+  }, [
+    isLoaded,
+    isSignedIn,
+    authUser,
+    connectSocket,
+    disconnectSocket,
+    clearAuth,
+  ]);
 
   if (!isLoaded) return <PageLoader />;
 

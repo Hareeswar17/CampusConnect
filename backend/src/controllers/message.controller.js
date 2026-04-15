@@ -1,4 +1,5 @@
 import cloudinary from "../lib/cloudinary.js";
+import { randomUUID } from "node:crypto";
 import { createClerkClient } from "@clerk/backend";
 import { ENV } from "../lib/env.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
@@ -7,6 +8,105 @@ import User from "../models/User.js";
 
 const hasObjectId = (list, id) => list.some((item) => item.toString() === id.toString());
 const clerkClient = createClerkClient({ secretKey: ENV.CLERK_SECRET_KEY });
+
+const AZURE_READY =
+  Boolean(ENV.AZURE_TRANSLATOR_KEY) &&
+  Boolean(ENV.AZURE_TRANSLATOR_ENDPOINT) &&
+  Boolean(ENV.AZURE_TRANSLATOR_REGION) &&
+  Boolean(ENV.AZURE_SPEECH_KEY) &&
+  Boolean(ENV.AZURE_SPEECH_REGION);
+
+const TTS_PROFILE_BY_LANGUAGE = {
+  en: { voiceName: "en-GB-SoniaNeural", locale: "en-GB" },
+  es: { voiceName: "es-ES-ElviraNeural", locale: "es-ES" },
+  fr: { voiceName: "fr-FR-DeniseNeural", locale: "fr-FR" },
+  de: { voiceName: "de-DE-KatjaNeural", locale: "de-DE" },
+  hi: { voiceName: "hi-IN-SwaraNeural", locale: "hi-IN" },
+  mr: { voiceName: "mr-IN-AarohiNeural", locale: "mr-IN" },
+};
+
+const DEFAULT_TTS_PROFILE = {
+  // Multilingual fallback keeps voice output available for languages
+  // that don't have a dedicated mapping in this app yet.
+  voiceName: "en-US-AvaMultilingualNeural",
+  locale: "en-US",
+};
+
+const getTtsProfile = (targetLanguage) =>
+  TTS_PROFILE_BY_LANGUAGE[targetLanguage] || DEFAULT_TTS_PROFILE;
+
+const normalizeTranslatorEndpoint = (endpoint) => endpoint.replace(/\/+$/, "");
+
+const translateWithAzure = async ({ text, targetLanguage }) => {
+  const endpoint = normalizeTranslatorEndpoint(ENV.AZURE_TRANSLATOR_ENDPOINT);
+  const url = `${endpoint}/translate?api-version=3.0&to=${encodeURIComponent(targetLanguage)}`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": ENV.AZURE_TRANSLATOR_KEY,
+      "Ocp-Apim-Subscription-Region": ENV.AZURE_TRANSLATOR_REGION,
+      "Content-Type": "application/json",
+      "X-ClientTraceId": randomUUID(),
+    },
+    body: JSON.stringify([{ Text: text }]),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Azure translator failed: ${response.status} ${errorBody}`);
+  }
+
+  const data = await response.json();
+  return data?.[0]?.translations?.[0]?.text || "";
+};
+
+const synthesizeSpeechWithAzure = async ({ text, targetLanguage }) => {
+  const profile = getTtsProfile(targetLanguage);
+  const ttsEndpoint = `https://${ENV.AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`;
+  const escapedText = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
+  const ssml = `<speak version='1.0' xml:lang='${profile.locale}'><voice xml:lang='${profile.locale}' name='${profile.voiceName}'>${escapedText}</voice></speak>`;
+
+  const response = await fetch(ttsEndpoint, {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": ENV.AZURE_SPEECH_KEY,
+      "Content-Type": "application/ssml+xml",
+      "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
+      "User-Agent": "CampusConnect",
+    },
+    body: ssml,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`Azure speech failed: ${response.status} ${errorBody}`);
+  }
+
+  const audioBuffer = Buffer.from(await response.arrayBuffer());
+  return `data:audio/mpeg;base64,${audioBuffer.toString("base64")}`;
+};
+
+const normalizeAudioDataUrl = (dataUrl) => {
+  if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
+    return dataUrl;
+  }
+
+  const [prefix, payload] = dataUrl.split(",", 2);
+  if (!prefix || !payload) {
+    return dataUrl;
+  }
+
+  // Cloudinary may reject codec-qualified mime types in data URI metadata.
+  const normalizedPrefix = prefix.replace(/;codecs=[^;]+/gi, "");
+  return `${normalizedPrefix},${payload}`;
+};
 
 const deriveFullNameFromClerkUser = (clerkUser) => {
   const fullName = clerkUser?.fullName?.trim();
@@ -299,12 +399,22 @@ export const getMessagesByUserId = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image, replyTo, isForwarded } = req.body;
+    const {
+      text,
+      image,
+      audio,
+      audioMimeType,
+      audioDurationMs,
+      audioTranscript,
+      translation,
+      replyTo,
+      isForwarded,
+    } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
-    if (!text && !image) {
-      return res.status(400).json({ message: "Text or image is required." });
+    if (!text && !image && !audio) {
+      return res.status(400).json({ message: "Text, image or audio is required." });
     }
     if (senderId.equals(receiverId)) {
       return res.status(400).json({ message: "Cannot send messages to yourself." });
@@ -319,6 +429,43 @@ export const sendMessage = async (req, res) => {
       // upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
+    }
+
+    let audioUrl;
+    if (audio) {
+      const normalizedAudio = normalizeAudioDataUrl(audio);
+      const uploadResponse = await cloudinary.uploader.upload(normalizedAudio, {
+        resource_type: "video",
+        folder: "chat-audio",
+      });
+      audioUrl = uploadResponse.secure_url;
+    }
+
+    let translatedAudioUrl;
+    if (translation?.mode === "voice") {
+      let translatedAudioDataUrl = translation?.translatedAudio;
+
+      if (!translatedAudioDataUrl && AZURE_READY) {
+        const textForSpeech =
+          (translation?.translatedText || "").toString().trim() ||
+          (translation?.sourceText || "").toString().trim();
+        const targetLang = (translation?.targetLanguage || "en").toString().trim();
+
+        if (textForSpeech) {
+          translatedAudioDataUrl = await synthesizeSpeechWithAzure({
+            text: textForSpeech,
+            targetLanguage: targetLang,
+          });
+        }
+      }
+
+      if (translatedAudioDataUrl) {
+        const translatedAudioUpload = await cloudinary.uploader.upload(translatedAudioDataUrl, {
+          resource_type: "video",
+          folder: "chat-audio-translations",
+        });
+        translatedAudioUrl = translatedAudioUpload.secure_url;
+      }
     }
 
     const normalizedReply =
@@ -336,6 +483,20 @@ export const sendMessage = async (req, res) => {
       receiverId,
       text,
       image: imageUrl,
+      audioUrl,
+      audioMimeType: audioMimeType || undefined,
+      audioDurationMs: Number.isFinite(audioDurationMs) ? audioDurationMs : undefined,
+      audioTranscript: (audioTranscript || "").toString().trim().slice(0, 2000) || undefined,
+      translation: translation
+        ? {
+            mode: translation.mode,
+            provider: translation.provider || "azure",
+            targetLanguage: translation.targetLanguage,
+            sourceText: translation.sourceText,
+            translatedText: translation.translatedText,
+            translatedAudioUrl,
+          }
+        : undefined,
       replyTo: normalizedReply,
       isForwarded: Boolean(isForwarded),
     });
@@ -350,7 +511,7 @@ export const sendMessage = async (req, res) => {
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Failed to send message" });
   }
 };
 
@@ -376,6 +537,11 @@ export const deleteMessage = async (req, res) => {
           deletedAt: new Date(),
           text: "",
           image: null,
+          audioUrl: null,
+          audioMimeType: null,
+          audioDurationMs: null,
+          audioTranscript: null,
+          translation: null,
           replyTo: null,
           isForwarded: false,
         },
@@ -402,6 +568,66 @@ export const deleteMessage = async (req, res) => {
   } catch (error) {
     console.log("Error in deleteMessage controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+export const translateText = async (req, res) => {
+  try {
+    if (!AZURE_READY) {
+      return res.status(500).json({ message: "Azure translation service is not configured." });
+    }
+
+    const text = (req.body?.text || "").toString().trim();
+    const targetLanguage = (req.body?.targetLanguage || "").toString().trim().toLowerCase();
+
+    if (!text) {
+      return res.status(400).json({ message: "Text is required for translation." });
+    }
+    if (!targetLanguage) {
+      return res.status(400).json({ message: "Target language is required." });
+    }
+
+    const translatedText = await translateWithAzure({ text, targetLanguage });
+
+    return res.status(200).json({
+      translatedText,
+      targetLanguage,
+      provider: "azure",
+    });
+  } catch (error) {
+    console.log("Error in translateText controller:", error.message);
+    return res.status(500).json({ message: "Failed to translate text." });
+  }
+};
+
+export const translateVoice = async (req, res) => {
+  try {
+    if (!AZURE_READY) {
+      return res.status(500).json({ message: "Azure translation service is not configured." });
+    }
+
+    const text = (req.body?.text || "").toString().trim();
+    const targetLanguage = (req.body?.targetLanguage || "").toString().trim().toLowerCase();
+
+    if (!text) {
+      return res.status(400).json({ message: "Text is required for voice translation." });
+    }
+    if (!targetLanguage) {
+      return res.status(400).json({ message: "Target language is required." });
+    }
+
+    const translatedText = await translateWithAzure({ text, targetLanguage });
+    const translatedAudio = await synthesizeSpeechWithAzure({ text: translatedText, targetLanguage });
+
+    return res.status(200).json({
+      translatedText,
+      translatedAudio,
+      targetLanguage,
+      provider: "azure",
+    });
+  } catch (error) {
+    console.log("Error in translateVoice controller:", error.message);
+    return res.status(500).json({ message: "Failed to translate voice." });
   }
 };
 

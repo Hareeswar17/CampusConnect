@@ -3,6 +3,13 @@ import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
+const normalizeId = (value) => {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value._id) return normalizeId(value._id);
+  return value.toString ? value.toString() : "";
+};
+
 export const useChatStore = create((set, get) => ({
   allContacts: [],
   discoverUsers: [],
@@ -32,7 +39,9 @@ export const useChatStore = create((set, get) => ({
       replyingTo: null,
       chats: selectedUser
         ? state.chats.map((chat) =>
-            chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
+            normalizeId(chat._id) === normalizeId(selectedUser._id)
+              ? { ...chat, unreadCount: 0 }
+              : chat
           )
         : state.chats,
     })),
@@ -129,7 +138,9 @@ export const useChatStore = create((set, get) => ({
       set((state) => ({
         messages: res.data,
         chats: state.chats.map((chat) =>
-          chat._id === userId ? { ...chat, unreadCount: 0 } : chat
+          normalizeId(chat._id) === normalizeId(userId)
+            ? { ...chat, unreadCount: 0 }
+            : chat
         ),
       }));
     } catch (error) {
@@ -151,6 +162,11 @@ export const useChatStore = create((set, get) => ({
       receiverId: selectedUser._id,
       text: messageData.text,
       image: messageData.image,
+      audioUrl: messageData.audio,
+      audioMimeType: messageData.audioMimeType,
+      audioDurationMs: messageData.audioDurationMs,
+      audioTranscript: messageData.audioTranscript,
+      translation: messageData.translation,
       replyTo: replyingTo
         ? {
             messageId: replyingTo._id,
@@ -194,7 +210,11 @@ export const useChatStore = create((set, get) => ({
     } catch (error) {
       // remove optimistic message on failure
       set({ messages: messages });
-      toast.error(error.response?.data?.message || "Something went wrong");
+      if (error.response?.status === 413) {
+        toast.error("Message is too large. Please send a shorter voice clip.");
+      } else {
+        toast.error(error.response?.data?.message || "Failed to send message");
+      }
     }
   },
 
@@ -209,6 +229,11 @@ export const useChatStore = create((set, get) => ({
                 isDeleted: true,
                 text: "",
                 image: null,
+                audioUrl: null,
+                audioMimeType: null,
+                audioDurationMs: null,
+                audioTranscript: null,
+                translation: null,
                 replyTo: null,
                 isForwarded: false,
               }
@@ -251,7 +276,7 @@ export const useChatStore = create((set, get) => ({
     socket.on("newMessage", (newMessage) => {
       const { selectedUser, messages, chats } = get();
       const isMessageSentFromSelectedUser = selectedUser
-        ? newMessage.senderId === selectedUser._id
+        ? normalizeId(newMessage.senderId) === normalizeId(selectedUser._id)
         : false;
 
       if (isMessageSentFromSelectedUser) {
@@ -259,13 +284,15 @@ export const useChatStore = create((set, get) => ({
       }
 
       if (!isMessageSentFromSelectedUser) {
-        const senderId = newMessage.senderId;
-        const senderAlreadyInChats = chats.some((chat) => chat._id === senderId);
+        const senderId = normalizeId(newMessage.senderId);
+        const senderAlreadyInChats = chats.some(
+          (chat) => normalizeId(chat._id) === senderId
+        );
 
         if (senderAlreadyInChats) {
           set((state) => ({
             chats: state.chats.map((chat) =>
-              chat._id === senderId
+              normalizeId(chat._id) === senderId
                 ? {
                     ...chat,
                     unreadCount: (chat.unreadCount || 0) + 1,
@@ -309,6 +336,11 @@ export const useChatStore = create((set, get) => ({
                 isDeleted: true,
                 text: "",
                 image: null,
+                audioUrl: null,
+                audioMimeType: null,
+                audioDurationMs: null,
+                audioTranscript: null,
+                translation: null,
                 replyTo: null,
                 isForwarded: false,
               }

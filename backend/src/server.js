@@ -29,7 +29,7 @@ const isAllowedOrigin = (origin) => {
 };
 
 app.use("/api/webhooks/clerk", express.raw({ type: "application/json" }));
-app.use(express.json({ limit: "5mb" })); // req.body
+app.use(express.json({ limit: "15mb" })); // req.body
 app.use(
   cors({
     origin: (origin, callback) => {
