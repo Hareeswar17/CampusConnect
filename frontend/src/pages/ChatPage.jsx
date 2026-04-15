@@ -21,7 +21,8 @@ function ChatPage() {
     subscribeToMessages,
     unsubscribeFromMessages,
   } = useChatStore();
-  const { authUser, checkAuth, isCheckingAuth, authError } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth, authError, socket } =
+    useAuthStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
     const savedWidth = Number(localStorage.getItem("chatLeftPanelWidth"));
@@ -108,14 +109,14 @@ function ChatPage() {
   }, [authUser, checkAuth]);
 
   useEffect(() => {
-    if (!authUser) return;
+    if (!authUser || !socket) return;
 
     subscribeToMessages();
 
     return () => {
       unsubscribeFromMessages();
     };
-  }, [authUser, subscribeToMessages, unsubscribeFromMessages]);
+  }, [authUser, socket, subscribeToMessages, unsubscribeFromMessages]);
 
   if (!authUser && isCheckingAuth) {
     return (

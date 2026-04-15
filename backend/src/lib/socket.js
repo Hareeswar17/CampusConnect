@@ -3,6 +3,7 @@ import http from "http";
 import express from "express";
 import { ENV } from "./env.js";
 import { socketAuthMiddleware } from "../middleware/socket.auth.middleware.js";
+import Message from "../models/Message.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -53,9 +54,59 @@ io.on("connection", (socket) => {
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
   // with socket.on we listen for events from clients
+  socket.on("markMessagesRead", async (payload = {}) => {
+    try {
+      const receiverId = socket.userId;
+      const senderId = payload?.senderId?.toString?.() || payload?.senderId;
+      const messageIds = Array.isArray(payload?.messageIds)
+        ? payload.messageIds.map((id) => id?.toString?.() || id).filter(Boolean)
+        : [];
+
+      if (!senderId) {
+        return;
+      }
+
+      const readFilter = {
+        senderId,
+        receiverId,
+        isRead: { $ne: true },
+      };
+
+      if (messageIds.length > 0) {
+        readFilter._id = { $in: messageIds };
+      }
+
+      const unreadIncomingMessages = await Message.find(readFilter).select("_id");
+      if (unreadIncomingMessages.length === 0) {
+        return;
+      }
+
+      const unreadMessageIds = unreadIncomingMessages.map((msg) => msg._id);
+
+      await Message.updateMany(
+        { _id: { $in: unreadMessageIds } },
+        {
+          $set: { isRead: true },
+        }
+      );
+
+      const senderSocketId = getReceiverSocketId(senderId);
+      if (senderSocketId) {
+        io.to(senderSocketId).emit("messagesRead", {
+          readerId: receiverId.toString(),
+          messageIds: unreadMessageIds.map((id) => id.toString()),
+        });
+      }
+    } catch (error) {
+      console.log("Error in markMessagesRead socket handler:", error.message);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.user.fullName);
-    delete userSocketMap[userId];
+    if (userSocketMap[userId] === socket.id) {
+      delete userSocketMap[userId];
+    }
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });

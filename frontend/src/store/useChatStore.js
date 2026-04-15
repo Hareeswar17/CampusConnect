@@ -23,6 +23,7 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isDiscoverLoading: false,
   isMessagesLoading: false,
+  readReceiptMap: {},
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
 
   toggleSound: () => {
@@ -135,8 +136,13 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
+      const readReceiptMap = get().readReceiptMap;
+      const messagesWithReadState = res.data.map((msg) =>
+        readReceiptMap[normalizeId(msg?._id)] ? { ...msg, isRead: true } : msg
+      );
+
       set((state) => ({
-        messages: res.data,
+        messages: messagesWithReadState,
         chats: state.chats.map((chat) =>
           normalizeId(chat._id) === normalizeId(userId)
             ? { ...chat, unreadCount: 0 }
@@ -199,12 +205,20 @@ export const useChatStore = create((set, get) => ({
 
       set((state) => {
         const hasTempMessage = state.messages.some((msg) => msg._id === tempId);
+        const normalizedMessageId = normalizeId(res.data?._id);
+        const shouldMarkRead = Boolean(state.readReceiptMap[normalizedMessageId]);
+        const persistedMessage = shouldMarkRead
+          ? { ...res.data, isRead: true }
+          : res.data;
+
         if (!hasTempMessage) {
-          return { messages: state.messages.concat(res.data) };
+          return { messages: state.messages.concat(persistedMessage) };
         }
 
         return {
-          messages: state.messages.map((msg) => (msg._id === tempId ? res.data : msg)),
+          messages: state.messages.map((msg) =>
+            msg._id === tempId ? persistedMessage : msg
+          ),
         };
       });
     } catch (error) {
@@ -273,6 +287,10 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
+    socket.off("newMessage");
+    socket.off("messagesRead");
+    socket.off("messageDeleted");
+
     socket.on("newMessage", (newMessage) => {
       const { selectedUser, messages, chats } = get();
       const isMessageSentFromSelectedUser = selectedUser
@@ -281,6 +299,13 @@ export const useChatStore = create((set, get) => ({
 
       if (isMessageSentFromSelectedUser) {
         set({ messages: [...messages, newMessage] });
+
+        if (newMessage?._id) {
+          socket.emit("markMessagesRead", {
+            senderId: normalizeId(newMessage.senderId),
+            messageIds: [normalizeId(newMessage._id)],
+          });
+        }
       }
 
       if (!isMessageSentFromSelectedUser) {
@@ -316,9 +341,17 @@ export const useChatStore = create((set, get) => ({
     socket.on("messagesRead", ({ messageIds }) => {
       if (!Array.isArray(messageIds) || messageIds.length === 0) return;
 
-      const messageIdSet = new Set(messageIds.map((id) => id.toString()));
+      const normalizedIds = messageIds.map((id) => normalizeId(id));
+      const messageIdSet = new Set(normalizedIds);
 
       set((state) => ({
+        readReceiptMap: normalizedIds.reduce(
+          (acc, id) => {
+            acc[id] = true;
+            return acc;
+          },
+          { ...state.readReceiptMap }
+        ),
         messages: state.messages.map((msg) =>
           messageIdSet.has(msg._id?.toString()) ? { ...msg, isRead: true } : msg
         ),
