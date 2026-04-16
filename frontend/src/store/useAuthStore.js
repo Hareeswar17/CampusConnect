@@ -49,17 +49,28 @@ export const useAuthStore = create((set, get) => ({
 
   connectSocket: async () => {
     const { authUser, getClerkToken } = get();
-    if (!authUser || get().socket?.connected) return;
+    const existingSocket = get().socket;
 
-    const token = await getClerkToken?.();
-    if (!token) return;
+    if (!authUser) return;
+
+    if (existingSocket) {
+      if (!existingSocket.connected) {
+        existingSocket.connect();
+      }
+      return;
+    }
 
     const socket = io(BASE_URL, {
-      auth: { token },
+      auth: async (cb) => {
+        const freshToken = await getClerkToken?.();
+        cb({ token: freshToken || "" });
+      },
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
-
-    socket.connect();
 
     set({ socket });
 
@@ -67,6 +78,22 @@ export const useAuthStore = create((set, get) => ({
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
+
+    socket.on("disconnect", () => {
+      set({ onlineUsers: [] });
+    });
+
+    socket.on("connect_error", async (error) => {
+      const message = error?.message || "";
+      const isAuthError = /unauthorized|authentication|token|jwt/i.test(message);
+
+      if (isAuthError) {
+        const freshToken = await get().getClerkToken?.();
+        socket.auth = { token: freshToken || "" };
+      }
+    });
+
+    socket.connect();
   },
 
   disconnectSocket: () => {

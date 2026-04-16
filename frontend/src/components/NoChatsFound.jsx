@@ -5,21 +5,22 @@ function NoChatsFound() {
   const { setActiveTab } = useChatStore();
 
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-      <div className="w-16 h-16 rounded-full border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 flex items-center justify-center">
-        <MessageCircleIcon className="w-8 h-8 text-brand-500" />
+    <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+      <div className="relative mb-5">
+        <div className="w-[72px] h-[72px] rounded-full bg-[var(--wa-search-bg)] flex items-center justify-center">
+          <MessageCircleIcon className="w-9 h-9 text-[var(--wa-green)] opacity-60" />
+        </div>
+        <div className="absolute inset-[-8px] rounded-full border border-[var(--wa-divider)] opacity-50" />
       </div>
-      <div>
-        <h4 className="text-slate-900 dark:text-slate-100 font-medium mb-1">
-          No conversations yet
-        </h4>
-        <p className="text-slate-500 dark:text-slate-400 text-sm px-6">
-          Start a new chat by selecting a contact from the contacts tab
-        </p>
-      </div>
+      <h4 className="text-[16px] text-[var(--wa-text-primary)] font-medium mb-1.5">
+        No conversations yet
+      </h4>
+      <p className="text-[var(--wa-text-secondary)] text-[13.5px] mb-5 max-w-[250px] leading-relaxed">
+        Start by adding friends from the contacts or requests tab.
+      </p>
       <button
         onClick={() => setActiveTab("contacts")}
-        className="px-4 py-2 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-colors duration-150 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+        className="px-5 py-2.5 text-[13.5px] rounded-lg bg-[var(--wa-green)] text-white font-medium hover:bg-[var(--wa-green-deep)] active:scale-[0.97] transition-all"
       >
         Find contacts
       </button>

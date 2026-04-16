@@ -1,52 +1,126 @@
-import { XIcon } from "lucide-react";
+import { ArrowLeft, MoreVertical, Phone, Search, Video } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 
-function ChatHeader() {
+function ChatHeader({ onBack }) {
   const { selectedUser, setSelectedUser } = useChatStore();
   const { onlineUsers } = useAuthStore();
   const isOnline = onlineUsers.includes(selectedUser._id);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const handleEscKey = (event) => {
-      if (event.key === "Escape") setSelectedUser(null);
+      if (event.key === "Escape") {
+        setSelectedUser(null);
+        onBack?.();
+      }
     };
-
     window.addEventListener("keydown", handleEscKey);
-
-    // cleanup function
     return () => window.removeEventListener("keydown", handleEscKey);
-  }, [setSelectedUser]);
+  }, [setSelectedUser, onBack]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [menuOpen]);
 
   return (
-    <div className="h-[72px] px-4 border-b border-[var(--clay-border)] bg-transparent flex items-center justify-between gap-3 shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`avatar ${isOnline ? "online" : "offline"}`}>
-          <div className="size-11 rounded-full ring-1 ring-[var(--panel-border)] overflow-hidden">
-            <img
-              src={selectedUser.profilePic || "/avatar.png"}
-              alt={selectedUser.fullName}
-            />
-          </div>
+    <div className="h-[59px] px-2 md:px-4 flex items-center justify-between gap-2 shrink-0 bg-[var(--wa-panel-header)] border-l border-[var(--wa-panel-border)]">
+      {/* Left */}
+      <div className="flex items-center gap-1.5 md:gap-3 min-w-0">
+        <button
+          onClick={() => {
+            setSelectedUser(null);
+            onBack?.();
+          }}
+          className="md:hidden w-[36px] h-[36px] flex items-center justify-center rounded-full text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors -ml-1"
+          aria-label="Back to chats"
+        >
+          <ArrowLeft className="w-[22px] h-[22px]" />
+        </button>
+
+        <div className="relative shrink-0 cursor-pointer">
+          <img
+            src={selectedUser.profilePic || "/avatar.png"}
+            alt={selectedUser.fullName}
+            className="w-[40px] h-[40px] rounded-full object-cover"
+          />
+          {isOnline && (
+            <span className="absolute bottom-0 right-0 w-[11px] h-[11px] bg-[var(--wa-green)] rounded-full border-[2px] border-[var(--wa-panel-header)]" />
+          )}
         </div>
 
-        <div className="min-w-0">
-          <h3 className="text-slate-900 dark:text-slate-100 font-semibold text-sm md:text-base leading-tight truncate">
+        <div className="min-w-0 cursor-pointer">
+          <h2 className="text-[16px] font-normal text-[var(--wa-text-primary)] truncate leading-tight">
             {selectedUser.fullName}
-          </h3>
-          <p className="text-slate-600 dark:text-slate-400 text-xs truncate">
-            {isOnline ? "Online" : "Offline"}
+          </h2>
+          <p className={`text-[12.5px] leading-tight mt-[1px] ${
+            isOnline ? "text-[var(--wa-green)]" : "text-[var(--wa-text-secondary)]"
+          }`}>
+            {isOnline ? "online" : "offline"}
           </p>
         </div>
       </div>
 
-      <button
-        onClick={() => setSelectedUser(null)}
-        className="rounded-xl p-2 text-slate-500 hover:bg-white/70 hover:text-slate-700 dark:text-zinc-400 dark:hover:bg-black/25 dark:hover:text-zinc-200 transition-colors duration-150"
-      >
-        <XIcon className="w-5 h-5 cursor-pointer" />
-      </button>
+      {/* Right */}
+      <div className="flex items-center shrink-0">
+        <button
+          type="button"
+          className="w-[40px] h-[40px] items-center justify-center rounded-full text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors hidden sm:flex"
+          aria-label="Video call"
+        >
+          <Video className="w-[20px] h-[20px]" />
+        </button>
+        <button
+          type="button"
+          className="w-[40px] h-[40px] items-center justify-center rounded-full text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors hidden sm:flex"
+          aria-label="Voice call"
+        >
+          <Phone className="w-[18px] h-[18px]" />
+        </button>
+        <button
+          type="button"
+          className="w-[40px] h-[40px] items-center justify-center rounded-full text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors hidden sm:flex"
+          aria-label="Search"
+        >
+          <Search className="w-[18px] h-[18px]" />
+        </button>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            className="w-[40px] h-[40px] flex items-center justify-center rounded-full text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors"
+            onClick={() => setMenuOpen((p) => !p)}
+            aria-label="Menu"
+          >
+            <MoreVertical className="w-[20px] h-[20px]" />
+          </button>
+
+          {menuOpen && (
+            <div
+              className="absolute right-0 top-[44px] w-[200px] rounded-md py-2 z-50 bg-[var(--wa-dropdown-bg)]"
+              style={{ boxShadow: "var(--wa-dropdown-shadow)" }}
+            >
+              <button
+                className="w-full text-left px-6 py-2.5 text-[14.5px] text-[var(--wa-text-primary)] hover:bg-[var(--wa-dropdown-hover)] transition-colors"
+                onClick={() => {
+                  setSelectedUser(null);
+                  onBack?.();
+                  setMenuOpen(false);
+                }}
+              >
+                Close chat
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

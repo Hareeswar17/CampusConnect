@@ -1,16 +1,24 @@
 function MessagesLoadingSkeleton() {
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      {[...Array(6)].map((_, index) => (
-        <div
-          key={index}
-          className={`chat ${index % 2 === 0 ? "chat-start" : "chat-end"}`}
-        >
-          <div className="chat-bubble bg-slate-200 dark:bg-slate-800 text-transparent w-32">
-            .
+    <div className="space-y-[6px] animate-pulse">
+      {[...Array(8)].map((_, i) => {
+        const isSelf = i % 3 !== 0;
+        const width = [55, 40, 65, 35, 50, 45, 60, 30][i];
+
+        return (
+          <div key={i} className={`flex ${isSelf ? "justify-end" : "justify-start"}`}>
+            <div
+              className={`rounded-[7.5px] px-3 py-3 ${
+                isSelf ? "bg-[var(--wa-outgoing)]" : "bg-[var(--wa-incoming)]"
+              }`}
+              style={{ width: `${width}%` }}
+            >
+              <div className="h-[12px] bg-[var(--wa-search-bg)] rounded w-full mb-[6px]" />
+              <div className="h-[12px] bg-[var(--wa-search-bg)] rounded" style={{ width: `${60 + Math.random() * 30}%` }} />
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

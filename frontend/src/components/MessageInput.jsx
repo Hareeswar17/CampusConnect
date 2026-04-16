@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import useKeyboardSound from "../hooks/useKeyboardSound";
 import { useChatStore } from "../store/useChatStore";
 import toast from "react-hot-toast";
-import { ImageIcon, Mic, SendIcon, Square, XIcon } from "lucide-react";
+import { ImageIcon, Mic, Paperclip, SendIcon, Smile, Square, XIcon } from "lucide-react";
 
 const blobToDataUrl = (blob) =>
   new Promise((resolve, reject) => {
@@ -21,9 +21,7 @@ const estimateBase64Bytes = (dataUrl) => {
 
 const formatRecordingTime = (elapsedMs) => {
   const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60)
-    .toString()
-    .padStart(2, "0");
+  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, "0");
   const seconds = (totalSeconds % 60).toString().padStart(2, "0");
   return `${minutes}:${seconds}`;
 };
@@ -48,13 +46,12 @@ function MessageInput() {
   const recognitionRef = useRef(null);
   const discardRecordingRef = useRef(false);
 
-  const { sendMessage, isSoundEnabled, replyingTo, clearReplyingTo } =
-    useChatStore();
+  const { sendMessage, isSoundEnabled, replyingTo, clearReplyingTo } = useChatStore();
+
+  const hasContent = text.trim() || imagePreview || audioDataUrl;
 
   const clearAudioState = () => {
-    if (audioPreviewUrl) {
-      URL.revokeObjectURL(audioPreviewUrl);
-    }
+    if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
     setAudioPreviewUrl("");
     setAudioDataUrl("");
     setAudioMimeType("");
@@ -75,10 +72,7 @@ function MessageInput() {
       typeof window !== "undefined"
         ? window.SpeechRecognition || window.webkitSpeechRecognition
         : null;
-
-    if (!SpeechRecognition) {
-      return;
-    }
+    if (!SpeechRecognition) return;
 
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
@@ -88,20 +82,12 @@ function MessageInput() {
     recognition.onresult = (event) => {
       let finalText = "";
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        if (event.results[i].isFinal) {
-          finalText += event.results[i][0].transcript;
-        }
+        if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
       }
-
-      if (finalText.trim()) {
-        setRecognizedText((prev) => `${prev} ${finalText}`.trim());
-      }
+      if (finalText.trim()) setRecognizedText((prev) => `${prev} ${finalText}`.trim());
     };
 
-    recognition.onerror = () => {
-      // Keep recording active even when recognition isn't available/allowed.
-    };
-
+    recognition.onerror = () => {};
     recognition.start();
     recognitionRef.current = recognition;
   };
@@ -109,16 +95,11 @@ function MessageInput() {
   const stopRecording = useCallback((discard = false) => {
     discardRecordingRef.current = discard;
     const recorder = mediaRecorderRef.current;
-
-    if (recorder && recorder.state !== "inactive") {
-      recorder.stop();
-    }
-
+    if (recorder && recorder.state !== "inactive") recorder.stop();
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       mediaStreamRef.current = null;
     }
-
     stopSpeechRecognition();
     setIsRecording(false);
   }, []);
@@ -128,29 +109,20 @@ function MessageInput() {
       toast.error("Audio recording is not supported in this browser");
       return;
     }
-
     try {
       clearAudioState();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      const preferredMimeTypes = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4",
-      ];
-      const selectedMimeType = preferredMimeTypes.find((type) =>
-        MediaRecorder.isTypeSupported(type),
-      );
+      const preferredMimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+      const selectedMimeType = preferredMimeTypes.find((t) => MediaRecorder.isTypeSupported(t));
       const recorder = selectedMimeType
         ? new MediaRecorder(stream, { mimeType: selectedMimeType })
         : new MediaRecorder(stream);
 
       audioChunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       recorder.onstop = async () => {
@@ -159,24 +131,14 @@ function MessageInput() {
           audioChunksRef.current = [];
           return;
         }
-
         try {
           const blob = new Blob(audioChunksRef.current, {
-            type: (selectedMimeType || recorder.mimeType || "audio/webm").split(
-              ";",
-            )[0],
+            type: (selectedMimeType || recorder.mimeType || "audio/webm").split(";")[0],
           });
-          if (!blob.size) {
-            return;
-          }
-
+          if (!blob.size) return;
           const objectUrl = URL.createObjectURL(blob);
           const base64Audio = await blobToDataUrl(blob);
-          const durationMs = Math.max(
-            0,
-            Date.now() - recordingStartAtRef.current,
-          );
-
+          const durationMs = Math.max(0, Date.now() - recordingStartAtRef.current);
           setAudioPreviewUrl(objectUrl);
           setAudioDataUrl(base64Audio);
           setAudioMimeType((blob.type || "audio/webm").split(";")[0]);
@@ -199,11 +161,7 @@ function MessageInput() {
   };
 
   const handleMicToggle = async () => {
-    if (isRecording) {
-      stopRecording(false);
-      return;
-    }
-
+    if (isRecording) { stopRecording(false); return; }
     await startRecording();
   };
 
@@ -215,22 +173,16 @@ function MessageInput() {
 
   useEffect(() => {
     if (!isRecording) return;
-
     const timer = setInterval(() => {
-      setRecordingElapsedMs(
-        Math.max(0, Date.now() - recordingStartAtRef.current),
-      );
+      setRecordingElapsedMs(Math.max(0, Date.now() - recordingStartAtRef.current));
     }, 250);
-
     return () => clearInterval(timer);
   }, [isRecording]);
 
   useEffect(() => {
     return () => {
       stopRecording();
-      if (audioPreviewUrl) {
-        URL.revokeObjectURL(audioPreviewUrl);
-      }
+      if (audioPreviewUrl) URL.revokeObjectURL(audioPreviewUrl);
     };
   }, [audioPreviewUrl, stopRecording]);
 
@@ -266,7 +218,6 @@ function MessageInput() {
       toast.error("Please select an image file");
       return;
     }
-
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
     reader.readAsDataURL(file);
@@ -278,40 +229,21 @@ function MessageInput() {
   };
 
   return (
-    <div
-      className="p-4 border-t border-[var(--panel-border)] bg-[var(--panel-bg)]/95 backdrop-blur-xl"
-      style={{ boxShadow: "var(--clay-shadow-raised)" }}
-    >
-      {replyingTo ? (
-        <div className="max-w-3xl mx-auto mb-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel-soft)]/90 p-2 backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium text-brand-600 dark:text-brand-400">
-              Reply mode
-            </p>
-
+    <div className="shrink-0 bg-[var(--wa-panel-header)] border-l border-[var(--wa-panel-border)]">
+      {/* Reply bar */}
+      {replyingTo && (
+        <div className="px-[5%] md:px-[7%] lg:px-[10%] pt-2">
+          <div className="rounded-lg bg-[var(--wa-panel)] border-l-[3px] border-[var(--wa-green)] px-3 py-2 flex items-center justify-between gap-3 shadow-sm">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-[var(--wa-green)]">Reply</p>
+              <p className="text-[13px] text-[var(--wa-text-secondary)] truncate mt-0.5">
+                {replyingTo.text || "Media message"}
+              </p>
+            </div>
             <button
               type="button"
               onClick={clearReplyingTo}
-              className="rounded-md p-1 text-slate-500 hover:bg-white/70 dark:text-zinc-400 dark:hover:bg-black/20"
-            >
-              <XIcon className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {imagePreview && (
-        <div className="max-w-3xl mx-auto mb-3 flex items-center">
-          <div className="relative">
-            <img
-              src={imagePreview}
-              alt="Preview"
-              className="w-20 h-20 object-cover rounded-lg border border-[var(--panel-border)]"
-            />
-            <button
-              onClick={removeImage}
-              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-[var(--panel-soft)] flex items-center justify-center text-slate-700 dark:text-zinc-200 hover:bg-white/70 dark:hover:bg-black/20 transition-colors duration-150"
-              type="button"
+              className="rounded-full p-1.5 text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors shrink-0"
             >
               <XIcon className="w-4 h-4" />
             </button>
@@ -319,117 +251,110 @@ function MessageInput() {
         </div>
       )}
 
-      {isRecording ? (
-        <div className="max-w-3xl mx-auto mb-3 rounded-xl border border-red-200 bg-red-50/80 p-3 backdrop-blur-sm dark:border-red-900/40 dark:bg-red-950/20">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-300">
-              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
-              <p className="text-sm font-medium">Recording voice message...</p>
-              <span className="rounded-md bg-white/80 px-2 py-0.5 text-xs font-semibold tabular-nums text-red-700 dark:bg-red-900/30 dark:text-red-200">
+      {/* Image preview */}
+      {imagePreview && (
+        <div className="px-[5%] md:px-[7%] lg:px-[10%] pt-2">
+          <div className="relative inline-block">
+            <img src={imagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border border-[var(--wa-panel-border)]" />
+            <button
+              onClick={removeImage}
+              className="absolute -top-1.5 -right-1.5 w-[22px] h-[22px] rounded-full bg-[var(--wa-panel-header)] border border-[var(--wa-panel-border)] flex items-center justify-center text-[var(--wa-icon)] hover:text-red-500 transition-colors shadow-sm"
+              type="button"
+            >
+              <XIcon className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Recording indicator */}
+      {isRecording && (
+        <div className="px-[5%] md:px-[7%] lg:px-[10%] pt-2">
+          <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200/60 dark:border-red-900/40 px-3 py-2.5 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400">
+              <span className="h-[10px] w-[10px] animate-pulse rounded-full bg-red-500 shrink-0" />
+              <span className="text-[13px] font-medium">Recording</span>
+              <span className="rounded bg-white/80 dark:bg-red-900/30 px-2 py-0.5 text-[12px] font-semibold tabular-nums">
                 {formatRecordingTime(recordingElapsedMs)}
               </span>
             </div>
-
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => stopRecording(false)}
-                className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-white/70 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-900/30"
-              >
-                Stop
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCancelRecording}
-                className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-white/70 dark:border-red-800 dark:text-red-200 dark:hover:bg-red-900/30"
-              >
-                Cancel
-              </button>
+              <button type="button" onClick={() => stopRecording(false)} className="rounded-md px-2.5 py-1 text-[12px] font-medium text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">Stop</button>
+              <button type="button" onClick={handleCancelRecording} className="rounded-md px-2.5 py-1 text-[12px] font-medium text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">Cancel</button>
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      {audioPreviewUrl ? (
-        <div className="max-w-3xl mx-auto mb-3 rounded-xl border border-[var(--panel-border)] bg-[var(--panel-soft)]/90 p-3 backdrop-blur-sm">
-          <div className="flex flex-wrap items-center gap-3">
-            <audio controls src={audioPreviewUrl} className="h-9" />
-
-            <button
-              type="button"
-              onClick={clearAudioState}
-              className="rounded-lg p-1 text-slate-500 hover:bg-white/70 dark:text-zinc-300 dark:hover:bg-black/20"
-            >
+      {/* Audio preview */}
+      {audioPreviewUrl && (
+        <div className="px-[5%] md:px-[7%] lg:px-[10%] pt-2">
+          <div className="rounded-lg bg-[var(--wa-panel)] border border-[var(--wa-panel-border)] px-3 py-2 flex items-center gap-3">
+            <audio controls src={audioPreviewUrl} className="h-9 flex-1" />
+            <button type="button" onClick={clearAudioState} className="rounded-full p-1.5 text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors">
               <XIcon className="h-4 w-4" />
             </button>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <form
-        onSubmit={handleSendMessage}
-        className="max-w-3xl mx-auto flex space-x-4"
-      >
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            isSoundEnabled && playRandomKeyStrokeSound();
-          }}
-          className="flex-1 rounded-xl border border-[var(--panel-border)] bg-[var(--clay-surface)]/90 py-2 px-4 text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500 backdrop-blur-sm"
-          placeholder="Type your message..."
-        />
-
-        <input
-          type="file"
-          accept="image/*"
-          ref={fileInputRef}
-          onChange={handleImageChange}
-          className="hidden"
-        />
-
+      {/* Input row */}
+      <form onSubmit={handleSendMessage} className="px-2.5 py-[6px] flex items-end gap-[5px]">
+        {/* Left icons */}
+        <button type="button" className="w-[42px] h-[42px] flex items-center justify-center rounded-full text-[var(--wa-icon)] hover:text-[var(--wa-icon-hover)] hover:bg-[var(--wa-panel-hover)] transition-colors shrink-0" aria-label="Emoji">
+          <Smile className="w-[24px] h-[24px]" />
+        </button>
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className={`rounded-xl border border-[var(--panel-border)] px-4 text-slate-600 dark:text-zinc-300 hover:bg-white/70 dark:hover:bg-black/20 transition-colors duration-150 ${
-            imagePreview ? "text-brand-500 dark:text-brand-500" : ""
+          className={`w-[42px] h-[42px] flex items-center justify-center rounded-full transition-colors shrink-0 ${
+            imagePreview ? "text-[var(--wa-green)]" : "text-[var(--wa-icon)] hover:text-[var(--wa-icon-hover)] hover:bg-[var(--wa-panel-hover)]"
           }`}
+          aria-label="Attach"
         >
-          <ImageIcon className="w-5 h-5" />
+          <Paperclip className="w-[24px] h-[24px] rotate-45" />
         </button>
 
-        <button
-          type="button"
-          onClick={handleMicToggle}
-          className={`rounded-xl border border-[var(--panel-border)] px-4 transition-colors duration-150 ${
-            isRecording
-              ? "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-              : "text-slate-600 dark:text-zinc-300 hover:bg-white/70 dark:hover:bg-black/20"
-          }`}
-        >
-          {isRecording ? (
-            <Square className="w-5 h-5" />
-          ) : (
-            <Mic className="w-5 h-5" />
-          )}
-        </button>
+        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} className="hidden" />
 
-        <button
-          type="submit"
-          disabled={
-            isRecording || (!text.trim() && !imagePreview && !audioDataUrl)
-          }
-          className="text-white rounded-xl px-4 py-2 font-medium transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{
-            background:
-              "linear-gradient(135deg, var(--neon-accent) 0%, var(--neon-accent-2) 100%)",
-            boxShadow: "var(--neon-glow)",
-          }}
-        >
-          <SendIcon className="w-5 h-5" />
-        </button>
+        {/* Text input */}
+        <div className="flex-1 min-w-0">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              isSoundEnabled && playRandomKeyStrokeSound();
+            }}
+            className="w-full rounded-lg bg-[var(--wa-input-bg)] border border-transparent px-3 py-[9px] text-[15px] text-[var(--wa-text-primary)] placeholder:text-[var(--wa-text-secondary)] focus:outline-none focus:border-[var(--wa-panel-border)] transition-colors"
+            placeholder="Type a message"
+          />
+        </div>
+
+        {/* Right: Mic ↔ Send */}
+        {hasContent ? (
+          <button
+            type="submit"
+            disabled={isRecording}
+            className="w-[42px] h-[42px] flex items-center justify-center rounded-full bg-[var(--wa-green)] text-white hover:bg-[var(--wa-green-deep)] active:scale-[0.95] disabled:opacity-50 transition-all shrink-0"
+            aria-label="Send"
+          >
+            <SendIcon className="w-[20px] h-[20px]" />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleMicToggle}
+            className={`w-[42px] h-[42px] flex items-center justify-center rounded-full transition-all shrink-0 ${
+              isRecording
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "text-[var(--wa-icon)] hover:text-[var(--wa-icon-hover)] hover:bg-[var(--wa-panel-hover)]"
+            }`}
+            aria-label={isRecording ? "Stop recording" : "Voice message"}
+          >
+            {isRecording ? <Square className="w-[18px] h-[18px]" /> : <Mic className="w-[24px] h-[24px]" />}
+          </button>
+        )}
       </form>
     </div>
   );
