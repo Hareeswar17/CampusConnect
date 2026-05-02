@@ -38,10 +38,16 @@ function ProfileHeader() {
           />
           <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[var(--wa-green)] rounded-full border-[2px] border-[var(--wa-panel-header)]" />
         </div>
-        <span className="text-[15px] font-normal text-[var(--wa-text-primary)] truncate">
-          {displayName}
-        </span>
-      </div>
+        <div className="flex flex-col min-w-0">
+          <span className="text-[15px] font-normal text-[var(--wa-text-primary)] truncate">
+            {displayName}
+          </span>
+          {authUser?.role === "teacher" && (
+            <span className="text-[11px] font-medium text-[var(--wa-green)] truncate">
+              Instructor
+            </span>
+          )}
+        </div>
 
       {/* Right: Action icons */}
       <div className="flex items-center gap-0.5 shrink-0">

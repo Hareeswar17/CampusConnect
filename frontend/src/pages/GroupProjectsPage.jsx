@@ -1,51 +1,89 @@
-import { Plus, UserPlus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Pencil, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import toast from "react-hot-toast";
 import ClassShell from "../components/ClassShell";
-import { getGroupById } from "../data/groups";
-
-const PROJECTS = [
-  {
-    id: "p1",
-    title: "Shortest Path Visualizer",
-    deadline: "Dec 5, 2023 · 11:59 PM",
-    type: "Individual",
-    maxMembers: 1,
-  },
-  {
-    id: "p2",
-    title: "Graph Theory Toolkit",
-    deadline: "Dec 12, 2023 · 11:59 PM",
-    type: "Team",
-    maxMembers: 4,
-  },
-];
-
-const MEMBERS = [
-  { id: "m1", name: "Sarah Williams", role: "Data Science" },
-  { id: "m2", name: "Marcus Johnson", role: "Computer Science" },
-  { id: "m3", name: "Emily Davis", role: "Computer Engineering" },
-  { id: "m4", name: "David Chen", role: "Mathematics" },
-];
+import { useAuthStore } from "../store/useAuthStore";
+import { useGroupStore } from "../store/useGroupStore";
+import { formatDateTime } from "../utils/time";
 
 function GroupProjectsPage() {
   const { groupId } = useParams();
-  const group = getGroupById(groupId);
-  const [teamName, setTeamName] = useState("");
-  const [selectedProjectId, setSelectedProjectId] = useState(PROJECTS[1]?.id);
-  const [requestedIds, setRequestedIds] = useState(new Set());
+  const { authUser } = useAuthStore();
+  const {
+    groupById,
+    fetchGroup,
+    projectsByGroup,
+    fetchProjects,
+    createProject,
+    updateProject,
+    deleteProject,
+  } = useGroupStore();
+  const group = groupById[groupId] || {};
+  const projects = projectsByGroup[groupId] || [];
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [title, setTitle] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [type, setType] = useState("Team");
+  const [maxMembers, setMaxMembers] = useState(4);
+  const [description, setDescription] = useState("");
+  const isTeacher = authUser?.role === "teacher" || group?.isTeacher || (group.teachers && group.teachers.includes(authUser?._id));
 
-  const selectedProject = useMemo(
-    () => PROJECTS.find((project) => project.id === selectedProjectId),
-    [selectedProjectId],
-  );
+  useEffect(() => {
+    fetchGroup(groupId);
+    fetchProjects(groupId);
+  }, [fetchGroup, fetchProjects, groupId]);
 
-  const handleRequest = (memberId) => {
-    setRequestedIds((prev) => {
-      const next = new Set(prev);
-      next.add(memberId);
-      return next;
-    });
+  const resetForm = () => {
+    setTitle("");
+    setDeadline("");
+    setType("Team");
+    setMaxMembers(4);
+    setDescription("");
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  const handleEdit = (project) => {
+    setEditingId(project._id);
+    setTitle(project.title || "");
+    setDeadline(project.deadline ? new Date(project.deadline).toISOString().slice(0, 16) : "");
+    setType(project.type || "Team");
+    setMaxMembers(project.maxMembers || 4);
+    setDescription(project.description || "");
+    setShowForm(true);
+  };
+
+  const handleDelete = async (projectId) => {
+    if (!window.confirm("Delete this project? This cannot be undone.")) return;
+    await deleteProject(groupId, projectId);
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!deadline) {
+      toast.error("Deadline is required");
+      return;
+    }
+    const payload = {
+      title: title.trim(),
+      deadline,
+      type,
+      maxMembers,
+      description: description.trim(),
+    };
+
+    if (editingId) {
+      const updated = await updateProject(groupId, editingId, payload);
+      if (updated) resetForm();
+    } else {
+      const created = await createProject(groupId, payload);
+      if (created) resetForm();
+    }
   };
 
   return (
@@ -56,7 +94,7 @@ function GroupProjectsPage() {
       <div className="h-full overflow-y-auto p-6">
         <div className="max-w-6xl">
           <div className="text-xs text-[var(--wa-text-secondary)]">
-            Groups / {group.title} / Projects
+            Groups / {group.title || "Group"} / Projects
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -68,21 +106,128 @@ function GroupProjectsPage() {
                 options.
               </p>
             </div>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--wa-green)] px-4 py-2 text-sm font-semibold text-white"
-            >
-              <Plus className="w-4 h-4" />
-              Create Project
-            </button>
+            {isTeacher ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (showForm) {
+                    resetForm();
+                  } else {
+                    setShowForm(true);
+                  }
+                }}
+                className="inline-flex items-center gap-2 shrink-0 whitespace-nowrap rounded-full bg-[var(--wa-green)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[var(--wa-green-deep)] transition-colors"
+              >
+                {showForm ? (
+                  <>
+                    <X className="w-4 h-4" /> Cancel
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4" /> Create Project
+                  </>
+                )}
+              </button>
+            ) : null}
           </div>
+
+          {isTeacher && showForm ? (
+            <div className="mt-4 rounded-2xl border border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-5 space-y-3">
+              {editingId && (
+                <div className="text-xs font-semibold text-[var(--wa-green)]">
+                  ✏️ Editing Project
+                </div>
+              )}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                    Title
+                  </label>
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-sm text-[var(--wa-text-primary)] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                    Deadline
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={deadline}
+                    onChange={(e) => setDeadline(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-xs text-[var(--wa-text-primary)] outline-none"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                    Type
+                  </label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value)}
+                    className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-sm text-[var(--wa-text-secondary)]"
+                  >
+                    <option value="Team">Team</option>
+                    <option value="Individual">Individual</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                    Max members
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={maxMembers}
+                    onChange={(e) =>
+                      setMaxMembers(Number(e.target.value))
+                    }
+                    className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-sm text-[var(--wa-text-primary)] outline-none"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                  Description
+                </label>
+                <textarea
+                  rows={3}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-sm text-[var(--wa-text-primary)] outline-none"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                {editingId && (
+                  <button
+                    type="button"
+                    onClick={resetForm}
+                    className="rounded-lg border border-[var(--wa-panel-border)] px-4 py-2 text-xs font-semibold text-[var(--wa-text-secondary)]"
+                  >
+                    Cancel
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="rounded-lg bg-[var(--wa-green)] px-4 py-2 text-xs font-semibold text-white"
+                >
+                  {editingId ? "Update Project" : "Save Project"}
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
             <div className="space-y-4">
-              {PROJECTS.map((project, index) => (
+              {projects.map((project, index) => (
                 <div
-                  key={project.id}
-                  className="rounded-xl border border-l-4 border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-5"
+                  key={project._id}
+                  className="group/card rounded-xl border border-l-4 border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-5"
                   style={{
                     borderLeftColor:
                       index % 2 === 0
@@ -96,113 +241,61 @@ function GroupProjectsPage() {
                         {project.title}
                       </h3>
                       <p className="text-xs text-[var(--wa-text-secondary)]">
-                        Deadline · {project.deadline}
+                        Deadline · {formatDateTime(project.deadline)}
                       </p>
                     </div>
-                    <span className="rounded-full bg-[var(--wa-panel-active)] px-3 py-1 text-[11px] font-semibold text-[var(--wa-text-secondary)]">
-                      {project.type}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {isTeacher && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover/card:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(project)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--wa-panel-hover)] text-[var(--wa-text-secondary)] transition-colors"
+                            title="Edit project"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(project._id)}
+                            className="p-1.5 rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"
+                            title="Delete project"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      <span className="rounded-full bg-[var(--wa-panel-active)] px-3 py-1 text-[11px] font-semibold text-[var(--wa-text-secondary)]">
+                        {project.type || "Team"}
+                      </span>
+                    </div>
                   </div>
                   <div className="mt-3 text-xs text-[var(--wa-text-secondary)]">
                     {project.type === "Team"
-                      ? `Up to ${project.maxMembers} members per team.`
+                      ? `Up to ${project.maxMembers || 1} members per team.`
                       : "Individual submission only."}
                   </div>
                 </div>
               ))}
-            </div>
 
-            <aside className="space-y-4">
-              <div
-                className="rounded-xl border border-l-4 border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-5"
-                style={{ borderLeftColor: "var(--wa-accent-sky)" }}
-              >
-                <h3 className="text-sm font-semibold text-[var(--wa-text-primary)]">
-                  Create a Team
-                </h3>
-                <p className="mt-2 text-xs text-[var(--wa-text-secondary)]">
-                  Pick a team project, name your group, and request members.
-                </p>
-                <div className="mt-4 space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
-                      Project
-                    </label>
-                    <select
-                      value={selectedProjectId}
-                      onChange={(event) =>
-                        setSelectedProjectId(event.target.value)
-                      }
-                      className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-sm text-[var(--wa-text-secondary)]"
-                    >
-                      {PROJECTS.filter(
-                        (project) => project.type === "Team",
-                      ).map((project) => (
-                        <option key={project.id} value={project.id}>
-                          {project.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
-                      Team Name
-                    </label>
-                    <input
-                      value={teamName}
-                      onChange={(event) => setTeamName(event.target.value)}
-                      placeholder="e.g. PathFinders"
-                      className="mt-2 w-full rounded-lg border border-[var(--wa-panel-border)] bg-transparent px-3 py-2 text-sm text-[var(--wa-text-primary)] outline-none"
-                    />
-                  </div>
-                  <div className="rounded-lg border border-[var(--wa-panel-border)] bg-[var(--wa-panel-active)] px-3 py-2 text-xs text-[var(--wa-text-secondary)]">
-                    {selectedProject
-                      ? `Team size limit: ${selectedProject.maxMembers} members`
-                      : "Select a team project to see limits."}
-                  </div>
+              {projects.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-6 text-sm text-[var(--wa-text-secondary)]">
+                  No projects posted yet.
                 </div>
-              </div>
-
+              ) : null}
+            </div>
+            <aside className="space-y-4">
               <div
                 className="rounded-xl border border-l-4 border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-5"
                 style={{ borderLeftColor: "var(--wa-accent-gray)" }}
               >
                 <h3 className="text-sm font-semibold text-[var(--wa-text-primary)]">
-                  Invite Members
+                  Team Notes
                 </h3>
-                <div className="mt-3 space-y-3">
-                  {MEMBERS.map((member) => {
-                    const isRequested = requestedIds.has(member.id);
-                    return (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between rounded-lg border border-[var(--wa-panel-border)] px-3 py-2"
-                      >
-                        <div>
-                          <div className="text-xs font-semibold text-[var(--wa-text-primary)]">
-                            {member.name}
-                          </div>
-                          <div className="text-[11px] text-[var(--wa-text-secondary)]">
-                            {member.role}
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={isRequested}
-                          onClick={() => handleRequest(member.id)}
-                          className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold ${
-                            isRequested
-                              ? "border border-[var(--wa-panel-border)] text-[var(--wa-text-secondary)] cursor-not-allowed"
-                              : "border border-[var(--wa-green)] text-[var(--wa-green)] hover:bg-[var(--wa-green)] hover:text-white"
-                          }`}
-                        >
-                          <UserPlus className="w-3.5 h-3.5" />
-                          {isRequested ? "Requested" : "Send Request"}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                <p className="mt-2 text-xs text-[var(--wa-text-secondary)]">
+                  Team formation and member requests will appear here once
+                  enabled.
+                </p>
               </div>
             </aside>
           </div>

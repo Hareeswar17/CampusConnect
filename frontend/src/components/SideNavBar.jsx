@@ -34,7 +34,18 @@ function SideNavBar() {
   const { clearAuth, authUser } = useAuthStore();
   const { incomingRequests } = useChatStore();
   const { themeMode, toggleThemeMode } = useThemeStore();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const stored = localStorage.getItem("campusConnect_sidebarCollapsed");
+    return stored === null ? true : stored === "true";
+  });
+
+  const handleToggleCollapse = () => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("campusConnect_sidebarCollapsed", String(next));
+      return next;
+    });
+  };
   const requestCount = incomingRequests.length;
   const displayName =
     user?.fullName?.trim() || authUser?.fullName?.trim() || "Student";
@@ -52,7 +63,7 @@ function SideNavBar() {
           <button
             type="button"
             aria-label={isCollapsed ? "Expand menu" : "Collapse menu"}
-            onClick={() => setIsCollapsed((prev) => !prev)}
+            onClick={handleToggleCollapse}
             className="w-9 h-9 rounded-lg flex items-center justify-center text-[var(--wa-icon)] hover:bg-[var(--wa-panel-hover)] transition-colors"
           >
             <Menu className="w-[18px] h-[18px]" />
@@ -68,22 +79,19 @@ function SideNavBar() {
               <div className="text-[15px] font-semibold text-[var(--wa-text-primary)]">
                 {displayName}
               </div>
-              <div className="text-[11px] text-[var(--wa-text-secondary)]">
-                Helpful Mentor
+              <div className="text-[11px] text-[var(--wa-text-secondary)] flex items-center gap-1.5">
+                <span
+                  className="inline-block w-1.5 h-1.5 rounded-full"
+                  style={{
+                    background: authUser?.role === "teacher" ? "#2563eb" : "#22c55e",
+                  }}
+                />
+                {authUser?.role === "teacher" ? "Teacher" : "Student"}
               </div>
             </div>
           )}
         </div>
 
-        {isCollapsed ? null : (
-          <button
-            type="button"
-            className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--wa-green)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--wa-green-deep)] transition-colors"
-          >
-            <Plus className="w-[16px] h-[16px]" />
-            New Study Session
-          </button>
-        )}
       </div>
 
       <nav className="px-3 space-y-1">

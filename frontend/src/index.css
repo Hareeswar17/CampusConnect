@@ -71,55 +71,55 @@
 }
 
 .dark {
-  --wa-page-bg: #0b1120;
-  --wa-banner: #0f172a;
-  --wa-shell-shadow: 0 10px 28px rgba(15, 23, 42, 0.5);
+  --wa-page-bg: #050b14;
+  --wa-banner: transparent;
+  --wa-shell-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 
-  --wa-panel: #0f172a;
-  --wa-panel-header: #111827;
-  --wa-panel-hover: #1e293b;
-  --wa-panel-active: #1f2937;
-  --wa-panel-border: #1e293b;
+  --wa-panel: rgba(15, 23, 42, 0.5);
+  --wa-panel-header: rgba(17, 24, 39, 0.6);
+  --wa-panel-hover: rgba(30, 41, 59, 0.6);
+  --wa-panel-active: rgba(31, 41, 55, 0.8);
+  --wa-panel-border: rgba(255, 255, 255, 0.05);
 
-  --wa-chat-bg: #0b1120;
-  --wa-chat-wallpaper: rgba(148, 163, 184, 0.06);
+  --wa-chat-bg: transparent;
+  --wa-chat-wallpaper: rgba(148, 163, 184, 0.03);
 
-  --wa-outgoing: #1d4ed8;
-  --wa-outgoing-deeper: #1e40af;
-  --wa-outgoing-fg: #e2e8f0;
-  --wa-incoming: #111827;
+  --wa-outgoing: rgba(59, 130, 246, 0.2);
+  --wa-outgoing-deeper: rgba(37, 99, 235, 0.3);
+  --wa-outgoing-fg: #ffffff;
+  --wa-incoming: rgba(255, 255, 255, 0.05);
   --wa-incoming-fg: #e2e8f0;
-  --wa-bubble-shadow: 0 1px 2px rgba(2, 6, 23, 0.6);
-  --wa-tail-outgoing: #1d4ed8;
-  --wa-tail-incoming: #111827;
+  --wa-bubble-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --wa-tail-outgoing: transparent;
+  --wa-tail-incoming: transparent;
 
-  --wa-input-bg: #0f172a;
-  --wa-input-surface: #111827;
+  --wa-input-bg: rgba(15, 23, 42, 0.5);
+  --wa-input-surface: rgba(17, 24, 39, 0.5);
 
-  --wa-search-bg: #111827;
-  --wa-search-focus: #0f172a;
+  --wa-search-bg: rgba(255, 255, 255, 0.05);
+  --wa-search-focus: rgba(255, 255, 255, 0.1);
 
-  --wa-text-primary: #e2e8f0;
+  --wa-text-primary: #f8fafc;
   --wa-text-secondary: #94a3b8;
   --wa-icon: #94a3b8;
-  --wa-icon-hover: #e2e8f0;
+  --wa-icon-hover: #f8fafc;
 
-  --wa-green: #60a5fa;
-  --wa-green-deep: #3b82f6;
+  --wa-green: #3b82f6; /* Blue variant */
+  --wa-green-deep: #2563eb;
   --wa-read: #38bdf8;
-  --wa-unread-badge: #60a5fa;
-  --wa-accent-sky: #1e40af;
-  --wa-accent-gray: #1f2937;
+  --wa-unread-badge: #3b82f6;
+  --wa-accent-sky: rgba(30, 64, 175, 0.3);
+  --wa-accent-gray: rgba(31, 41, 55, 0.5);
 
-  --wa-divider: #1e293b;
+  --wa-divider: rgba(255, 255, 255, 0.05);
 
-  --wa-dropdown-bg: #0f172a;
-  --wa-dropdown-hover: #1e293b;
-  --wa-dropdown-shadow: 0 10px 24px rgba(2, 6, 23, 0.7);
-  --wa-overlay: rgba(2, 6, 23, 0.6);
+  --wa-dropdown-bg: rgba(15, 23, 42, 0.85);
+  --wa-dropdown-hover: rgba(30, 41, 59, 0.8);
+  --wa-dropdown-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --wa-overlay: rgba(0, 0, 0, 0.6);
 
-  --wa-header: #1d4ed8;
-  --wa-header-fg: #e2e8f0;
+  --wa-header: rgba(37, 99, 235, 0.8);
+  --wa-header-fg: #ffffff;
 }
 
 /* ─── Base ─── */
@@ -168,6 +168,12 @@
   box-shadow: var(--wa-shell-shadow);
 }
 
+.dark .wa-shell-container {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
 @media (min-width: 1440px) {
   .wa-shell-container {
     margin: 19px auto;
@@ -207,50 +213,31 @@
   position: relative;
   background: var(--wa-outgoing);
   color: var(--wa-outgoing-fg);
-  border-radius: 7.5px 7.5px 0 7.5px;
+  border-radius: 16px 16px 4px 16px;
   box-shadow: var(--wa-bubble-shadow);
-}
-
-.wa-bubble-outgoing::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: -8px;
-  width: 8px;
-  height: 13px;
-  background: var(--wa-tail-outgoing);
-  clip-path: polygon(0 0, 0 100%, 100% 0);
 }
 
 .wa-bubble-incoming {
   position: relative;
   background: var(--wa-incoming);
   color: var(--wa-incoming-fg);
-  border-radius: 7.5px 7.5px 7.5px 0;
+  border-radius: 16px 16px 16px 4px;
   box-shadow: var(--wa-bubble-shadow);
 }
 
-.wa-bubble-incoming::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -8px;
-  width: 8px;
-  height: 13px;
-  background: var(--wa-tail-incoming);
-  clip-path: polygon(100% 0, 0 0, 100% 100%);
+.dark .wa-bubble-outgoing,
+.dark .wa-bubble-incoming {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-/* Only show tail on first message in a consecutive group */
+/* Make consecutive messages fully rounded */
 .wa-bubble-no-tail.wa-bubble-outgoing {
-  border-radius: 7.5px 7.5px 0 7.5px;
-}
-.wa-bubble-no-tail.wa-bubble-outgoing::after,
-.wa-bubble-no-tail.wa-bubble-incoming::after {
-  display: none;
+  border-radius: 16px;
 }
 .wa-bubble-no-tail.wa-bubble-incoming {
-  border-radius: 7.5px 7.5px 7.5px 0;
+  border-radius: 16px;
 }
 
 /* ══════════════════════════════════════════

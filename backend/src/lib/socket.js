@@ -102,6 +102,18 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("joinGroup", (groupId) => {
+    if (groupId) {
+      socket.join(`group_${groupId}`);
+    }
+  });
+
+  socket.on("leaveGroup", (groupId) => {
+    if (groupId) {
+      socket.leave(`group_${groupId}`);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("A user disconnected", socket.user.fullName);
     if (userSocketMap[userId] === socket.id) {

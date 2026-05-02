@@ -171,7 +171,7 @@ export const getAllContacts = async (req, res) => {
     const loggedInUserId = req.user._id;
     const currentUser = await User.findById(loggedInUserId).select("friends");
     const contacts = await User.find({ _id: { $in: currentUser?.friends || [] } }).select(
-      "-password"
+      "-password -teacherVerification.codeHash"
     );
 
     res.status(200).json(contacts);
@@ -206,7 +206,7 @@ export const getDiscoverUsers = async (req, res) => {
       _id: { $nin: excludedIds },
       $or: [{ fullName: searchRegex }, { email: searchRegex }],
     })
-      .select("-password")
+      .select("-password -teacherVerification.codeHash")
       .limit(25);
 
     res.status(200).json(users);
@@ -650,7 +650,9 @@ export const getChatPartners = async (req, res) => {
       ),
     ];
 
-    const chatPartners = await User.find({ _id: { $in: chatPartnerIds } }).select("-password");
+    const chatPartners = await User.find({ _id: { $in: chatPartnerIds } }).select(
+      "-password -teacherVerification.codeHash"
+    );
 
     const unreadCounts = await Message.aggregate([
       {

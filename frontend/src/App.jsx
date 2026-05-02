@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { useEffect } from "react";
 import ChatPage from "./pages/ChatPage";
@@ -21,24 +21,25 @@ import SettingsPage from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import PageLoader from "./components/PageLoader";
+import RoleSelectionModal from "./components/RoleSelectionModal";
+import LandingPage from "./pages/LandingPage";
 
 import { Toaster } from "react-hot-toast";
 import { useThemeStore } from "./store/useThemeStore";
 import { setAuthTokenGetter } from "./lib/axios";
 import { useAuthStore } from "./store/useAuthStore";
-import { GROUPS } from "./data/groups";
-
-const DEFAULT_GROUP_ID = GROUPS[0]?.id || "physics";
 
 function App() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const { themeMode } = useThemeStore();
   const {
     authUser,
+    isCheckingAuth,
     setClerkTokenGetter,
     connectSocket,
     disconnectSocket,
     clearAuth,
+    checkAuth,
   } = useAuthStore();
 
   useEffect(() => {
@@ -63,26 +64,43 @@ function App() {
       return;
     }
 
-    if (authUser) {
+    if (!authUser) {
+      checkAuth();
+    } else {
       connectSocket();
     }
   }, [
     isLoaded,
     isSignedIn,
     authUser,
+    checkAuth,
     connectSocket,
     disconnectSocket,
     clearAuth,
   ]);
 
-  if (!isLoaded) return <PageLoader />;
+  if (!isLoaded || (isSignedIn && isCheckingAuth)) return <PageLoader />;
+
+  // Show role selection modal if user is authenticated but hasn't chosen a role yet
+  const showRoleModal = isSignedIn && authUser && !authUser.roleSelected;
 
   return (
     <>
+      {showRoleModal && <RoleSelectionModal />}
+
+      {/* Global Background Orbs for Dark Mode */}
+      {themeMode === "dark" && (
+        <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-[-1]">
+          <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-blue-500/10 blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-indigo-500/10 blur-[120px]" />
+          <div className="absolute top-[40%] left-[60%] w-[30vw] h-[30vw] rounded-full bg-purple-500/10 blur-[100px]" />
+        </div>
+      )}
+
       <Routes>
         <Route
           path="/"
-          element={<Navigate to={isSignedIn ? "/chat" : "/login"} />}
+          element={isSignedIn ? <Navigate to="/chat" /> : <LandingPage />}
         />
         <Route
           path="/chat"
@@ -156,47 +174,34 @@ function App() {
             !isSignedIn ? <Navigate to={"/login"} /> : <GroupRosterPage />
           }
         />
+        {/* Fallback redirects for bare /groups/* paths → redirect to /groups */}
         <Route
           path="/groups/doubts"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/doubts`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/groups/doubts/new"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/doubts/new`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/groups/resources"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/resources`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/groups/events"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/events`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/groups/tasks"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/tasks`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/groups/projects"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/projects`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/groups/roster"
-          element={
-            <Navigate to={`/groups/${DEFAULT_GROUP_ID}/roster`} replace />
-          }
+          element={<Navigate to="/groups" replace />}
         />
         <Route
           path="/find-friends"

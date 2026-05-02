@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -10,10 +11,15 @@ import {
   Users,
   ArrowLeft,
 } from "lucide-react";
-import { getGroupById } from "../data/groups";
+import { useGroupStore } from "../store/useGroupStore";
 
 function ClassSideNav({ groupId }) {
-  const group = getGroupById(groupId);
+  const { groupById, fetchGroup } = useGroupStore();
+  const group = groupById[groupId] || {};
+
+  useEffect(() => {
+    fetchGroup(groupId);
+  }, [fetchGroup, groupId]);
 
   const items = [
     { to: `/groups/${groupId}`, label: "Overview", icon: Home },
@@ -38,13 +44,13 @@ function ClassSideNav({ groupId }) {
         </Link>
         <div>
           <div className="text-sm font-semibold text-[var(--wa-text-primary)]">
-            {group.title}
+            {group.title || "Group"}
           </div>
           <div className="text-xs text-[var(--wa-text-secondary)]">
-            {group.subtitle}
+            {group.subtitle || ""}
           </div>
           <div className="mt-2 text-[11px] text-[var(--wa-text-secondary)]">
-            {group.members}
+            {group.membersCount != null ? `${group.membersCount} Members` : ""}
           </div>
         </div>
       </div>
@@ -52,10 +58,12 @@ function ClassSideNav({ groupId }) {
       <nav className="px-3 space-y-1">
         {items.map((item) => {
           const Icon = item.icon;
+          const isOverview = item.to === `/groups/${groupId}`;
           return (
             <NavLink
               key={item.to}
               to={item.to}
+              end={isOverview}
               className={({ isActive }) =>
                 [
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",

@@ -1,36 +1,40 @@
-import { Paperclip } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, Paperclip } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ClassShell from "../components/ClassShell";
-import { getGroupById } from "../data/groups";
-
-const DOUBTS = [
-  {
-    id: "d1",
-    title: "Confusion about solvent effects on SN2 reaction rates",
-    topic: "SN1/SN2 Reactions",
-  },
-  {
-    id: "d2",
-    title: "Determining R/S configuration on complex bicyclic systems",
-    topic: "Stereochemistry",
-  },
-];
+import { useGroupStore } from "../store/useGroupStore";
 
 function GroupClarifyDoubtPage() {
   const { groupId, doubtId } = useParams();
-  const group = getGroupById(groupId);
+  const {
+    groupById,
+    fetchGroup,
+    fetchDoubtDetail,
+    addDoubtComment,
+    doubtDetailById,
+  } = useGroupStore();
+  const group = groupById[groupId] || {};
   const accentSky = "var(--wa-accent-sky)";
-  const doubt = DOUBTS.find((item) => item.id === doubtId);
+  const detail = doubtDetailById[doubtId];
+  const doubt = detail?.doubt || null;
   const [clarification, setClarification] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    fetchGroup(groupId);
+    fetchDoubtDetail(groupId, doubtId);
+  }, [fetchGroup, fetchDoubtDetail, groupId, doubtId]);
+
+  const handleSubmit = async () => {
     const trimmed = clarification.trim();
     if (!trimmed) return;
-    const pendingKey = `clarify-${groupId}-${doubtId}`;
-    sessionStorage.setItem(pendingKey, JSON.stringify({ text: trimmed }));
-    navigate(`/groups/${groupId}/doubts/${doubtId}`);
+    const result = await addDoubtComment(groupId, doubtId, {
+      text: trimmed,
+      type: "clarification",
+    });
+    if (result) {
+      navigate(`/groups/${groupId}/doubts/${doubtId}`);
+    }
   };
 
   return (
@@ -40,8 +44,22 @@ function GroupClarifyDoubtPage() {
     >
       <div className="h-full overflow-y-auto p-6">
         <div className="max-w-4xl">
-          <div className="text-xs text-[var(--wa-text-secondary)]">
-            Groups / {group.title} / Clarify Doubt
+          {!doubt ? (
+            <div className="rounded-xl border border-dashed border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-6 text-sm text-[var(--wa-text-secondary)]">
+              Loading doubt...
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-[var(--wa-text-secondary)]">
+              Groups / {group.title || "Group"} / Clarify Doubt
+            </div>
+            <Link
+              to={`/groups/${groupId}/doubts/${doubtId}`}
+              className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--wa-text-secondary)] hover:text-[var(--wa-text-primary)]"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Doubt
+            </Link>
           </div>
           <h2 className="mt-2 text-2xl font-semibold text-[var(--wa-text-primary)]">
             Clarify Doubt
@@ -66,7 +84,17 @@ function GroupClarifyDoubtPage() {
                     {doubt.topic}
                   </span>
                 ) : null}
+                {doubt?.assignedToTeacher ? (
+                  <span className="ml-2 rounded-full bg-[var(--wa-panel)] px-2 py-0.5 text-[10px] font-semibold text-[var(--wa-text-secondary)]">
+                    Teacher tagged
+                  </span>
+                ) : null}
               </div>
+              {doubt?.assignedToTeacher ? (
+                <p className="mt-2 text-xs text-[var(--wa-text-secondary)]">
+                  Only a teacher clarification will resolve this doubt.
+                </p>
+              ) : null}
             </div>
 
             <div>

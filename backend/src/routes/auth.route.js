@@ -1,5 +1,12 @@
 import express from "express";
-import { checkAuth, signup, login, logout, updateProfile } from "../controllers/auth.controller.js";
+import {
+	checkAuth,
+	login,
+	logout,
+	setUserRole,
+	signup,
+	updateProfile,
+} from "../controllers/auth.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { arcjetProtection } from "../middleware/arcjet.middleware.js";
 
@@ -10,6 +17,8 @@ router.use(arcjetProtection);
 router.post("/signup", signup);
 router.post("/login", login);
 router.post("/logout", logout);
+
+router.post("/role", protectRoute, setUserRole);
 
 router.put("/update-profile", protectRoute, updateProfile);
 
