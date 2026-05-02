@@ -8,12 +8,12 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", ...defaultTheme.fontFamily.sans],
+        sans: ["Lexend", ...defaultTheme.fontFamily.sans],
       },
       colors: {
         brand: {
-          500: "#3b82f6",
-          600: "#6366f1",
+          500: "#2563eb",
+          600: "#1d4ed8",
         },
         wa: {
           green: "#00a884",

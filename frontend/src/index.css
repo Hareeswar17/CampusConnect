@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,120 +9,124 @@
    ══════════════════════════════════════════════════════ */
 :root {
   /* Page chrome */
-  --wa-page-bg: #d4dbd2;
-  --wa-banner: #00a884;
-  --wa-shell-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  --wa-page-bg: #f8f9ff;
+  --wa-banner: #2563eb;
+  --wa-shell-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
 
   /* Panel surfaces */
   --wa-panel: #ffffff;
-  --wa-panel-header: #f0f2f5;
-  --wa-panel-hover: #f0f2f5;
-  --wa-panel-active: #e9edef;
-  --wa-panel-border: #e9edef;
+  --wa-panel-header: #f1f5ff;
+  --wa-panel-hover: #eef2ff;
+  --wa-panel-active: #e0e7ff;
+  --wa-panel-border: #e2e8f0;
 
   /* Chat canvas */
-  --wa-chat-bg: #efeae2;
-  --wa-chat-wallpaper: rgba(0, 0, 0, 0.04);
+  --wa-chat-bg: #f8f9ff;
+  --wa-chat-wallpaper: rgba(37, 99, 235, 0.05);
 
   /* Bubbles */
-  --wa-outgoing: #d9fdd3;
-  --wa-outgoing-deeper: #d1f4cc;
-  --wa-outgoing-fg: #111b21;
+  --wa-outgoing: #e0e7ff;
+  --wa-outgoing-deeper: #c7d2fe;
+  --wa-outgoing-fg: #0f172a;
   --wa-incoming: #ffffff;
-  --wa-incoming-fg: #111b21;
-  --wa-bubble-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.06);
-  --wa-tail-outgoing: #d9fdd3;
+  --wa-incoming-fg: #0f172a;
+  --wa-bubble-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --wa-tail-outgoing: #e0e7ff;
   --wa-tail-incoming: #ffffff;
 
   /* Input */
   --wa-input-bg: #ffffff;
-  --wa-input-surface: #f0f2f5;
+  --wa-input-surface: #f1f5ff;
 
   /* Search */
-  --wa-search-bg: #f0f2f5;
+  --wa-search-bg: #f1f5ff;
   --wa-search-focus: #ffffff;
 
   /* Text & icons */
-  --wa-text-primary: #111b21;
-  --wa-text-secondary: #667781;
-  --wa-icon: #54656f;
-  --wa-icon-hover: #3b4a54;
+  --wa-text-primary: #0f172a;
+  --wa-text-secondary: #64748b;
+  --wa-icon: #475569;
+  --wa-icon-hover: #1e293b;
 
   /* Accent */
-  --wa-green: #00a884;
-  --wa-green-deep: #008069;
-  --wa-read: #53bdeb;
-  --wa-unread-badge: #25d366;
+  --wa-green: #2563eb;
+  --wa-green-deep: #1d4ed8;
+  --wa-read: #38bdf8;
+  --wa-unread-badge: #2563eb;
+  --wa-accent-sky: #bfe7ff;
+  --wa-accent-gray: #e2e8f0;
 
   /* Dividers */
-  --wa-divider: #e9edef;
+  --wa-divider: #e2e8f0;
 
   /* Dropdowns & overlays */
   --wa-dropdown-bg: #ffffff;
-  --wa-dropdown-hover: #f0f2f5;
-  --wa-dropdown-shadow: 0 2px 5px 0 rgba(11, 20, 26, 0.26), 0 2px 10px 0 rgba(11, 20, 26, 0.16);
-  --wa-overlay: rgba(11, 20, 26, 0.4);
+  --wa-dropdown-hover: #f1f5ff;
+  --wa-dropdown-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  --wa-overlay: rgba(15, 23, 42, 0.35);
 
   /* Header accent */
-  --wa-header: #008069;
+  --wa-header: #2563eb;
   --wa-header-fg: #ffffff;
 }
 
 .dark {
-  --wa-page-bg: #0b141a;
-  --wa-banner: #1f2c34;
-  --wa-shell-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  --wa-page-bg: #0b1120;
+  --wa-banner: #0f172a;
+  --wa-shell-shadow: 0 10px 28px rgba(15, 23, 42, 0.5);
 
-  --wa-panel: #111b21;
-  --wa-panel-header: #202c33;
-  --wa-panel-hover: #202c33;
-  --wa-panel-active: #2a3942;
-  --wa-panel-border: #222d34;
+  --wa-panel: #0f172a;
+  --wa-panel-header: #111827;
+  --wa-panel-hover: #1e293b;
+  --wa-panel-active: #1f2937;
+  --wa-panel-border: #1e293b;
 
-  --wa-chat-bg: #0b141a;
-  --wa-chat-wallpaper: rgba(255, 255, 255, 0.015);
+  --wa-chat-bg: #0b1120;
+  --wa-chat-wallpaper: rgba(148, 163, 184, 0.06);
 
-  --wa-outgoing: #005c4b;
-  --wa-outgoing-deeper: #025144;
-  --wa-outgoing-fg: #e9edef;
-  --wa-incoming: #202c33;
-  --wa-incoming-fg: #e9edef;
-  --wa-bubble-shadow: 0 1px 0.5px rgba(0, 0, 0, 0.13);
-  --wa-tail-outgoing: #005c4b;
-  --wa-tail-incoming: #202c33;
+  --wa-outgoing: #1d4ed8;
+  --wa-outgoing-deeper: #1e40af;
+  --wa-outgoing-fg: #e2e8f0;
+  --wa-incoming: #111827;
+  --wa-incoming-fg: #e2e8f0;
+  --wa-bubble-shadow: 0 1px 2px rgba(2, 6, 23, 0.6);
+  --wa-tail-outgoing: #1d4ed8;
+  --wa-tail-incoming: #111827;
 
-  --wa-input-bg: #2a3942;
-  --wa-input-surface: #202c33;
+  --wa-input-bg: #0f172a;
+  --wa-input-surface: #111827;
 
-  --wa-search-bg: #202c33;
-  --wa-search-focus: #2a3942;
+  --wa-search-bg: #111827;
+  --wa-search-focus: #0f172a;
 
-  --wa-text-primary: #e9edef;
-  --wa-text-secondary: #8696a0;
-  --wa-icon: #aebac1;
-  --wa-icon-hover: #e9edef;
+  --wa-text-primary: #e2e8f0;
+  --wa-text-secondary: #94a3b8;
+  --wa-icon: #94a3b8;
+  --wa-icon-hover: #e2e8f0;
 
-  --wa-green: #00a884;
-  --wa-green-deep: #00a884;
-  --wa-read: #53bdeb;
-  --wa-unread-badge: #25d366;
+  --wa-green: #60a5fa;
+  --wa-green-deep: #3b82f6;
+  --wa-read: #38bdf8;
+  --wa-unread-badge: #60a5fa;
+  --wa-accent-sky: #1e40af;
+  --wa-accent-gray: #1f2937;
 
-  --wa-divider: #222d34;
+  --wa-divider: #1e293b;
 
-  --wa-dropdown-bg: #233138;
-  --wa-dropdown-hover: #182229;
-  --wa-dropdown-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.5), 0 2px 10px 0 rgba(0, 0, 0, 0.4);
-  --wa-overlay: rgba(11, 20, 26, 0.65);
+  --wa-dropdown-bg: #0f172a;
+  --wa-dropdown-hover: #1e293b;
+  --wa-dropdown-shadow: 0 10px 24px rgba(2, 6, 23, 0.7);
+  --wa-overlay: rgba(2, 6, 23, 0.6);
 
-  --wa-header: #202c33;
-  --wa-header-fg: #e9edef;
+  --wa-header: #1d4ed8;
+  --wa-header-fg: #e2e8f0;
 }
 
 /* ─── Base ─── */
 @layer base {
   body {
     @apply antialiased;
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    font-family: "Lexend", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
       Helvetica, Arial, sans-serif;
     background: var(--wa-page-bg);
     color: var(--wa-text-primary);
@@ -135,7 +141,7 @@
   }
 
   ::selection {
-    background: rgba(0, 168, 132, 0.2);
+    background: rgba(37, 99, 235, 0.2);
   }
 }
 
