@@ -8,6 +8,7 @@ const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:3000
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isCheckingAuth: true,
+  isSettingRole: false,
   authError: null,
   socket: null,
   onlineUsers: [],
@@ -44,6 +45,25 @@ export const useAuthStore = create((set, get) => ({
     } catch (error) {
       console.log("Error in update profile:", error);
       toast.error(error.response.data.message);
+    }
+  },
+
+  setRole: async (role, inviteCode) => {
+    set({ isSettingRole: true });
+    try {
+      const payload = { role };
+      if (inviteCode) payload.inviteCode = inviteCode;
+      const res = await axiosInstance.post("/auth/role", payload);
+      set({ authUser: res.data });
+      toast.success(`Role set to ${role} successfully!`);
+      return { success: true };
+    } catch (error) {
+      console.log("Error in setRole:", error);
+      const message = error?.response?.data?.message || "Failed to set role";
+      toast.error(message);
+      return { success: false, message };
+    } finally {
+      set({ isSettingRole: false });
     }
   },
 

@@ -8,12 +8,14 @@ function SignUpPage() {
         <BorderAnimatedContainer fullScreen>
           <div className="w-full min-h-[100dvh] flex flex-col md:flex-row bg-zinc-900">
             <div className="w-full md:w-1/2 p-6 md:p-8 flex items-center justify-center overflow-y-auto bg-zinc-900">
-              <SignUp
-                path="/signup"
-                routing="path"
-                signInUrl="/login"
-                forceRedirectUrl="/chat"
-              />
+              <div className="w-full max-w-md space-y-5">
+                <SignUp
+                  path="/signup"
+                  routing="path"
+                  signInUrl="/login"
+                  forceRedirectUrl="/chat"
+                />
+              </div>
             </div>
 
             <div className="hidden md:w-1/2 md:flex items-center justify-center p-8 bg-zinc-900">
