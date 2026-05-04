@@ -25,7 +25,7 @@ function ProfileHeader() {
     document.addEventListener("mousedown", close);
     return () => document.removeEventListener("mousedown", close);
   }, [menuOpen]);
-
+};
   return (
     <div className="h-[59px] px-4 flex items-center justify-between shrink-0 bg-[var(--wa-panel-header)]">
       {/* Left: Avatar + Name */}
@@ -97,5 +97,4 @@ function ProfileHeader() {
       </div>
     </div>
   );
-}
 export default ProfileHeader;
