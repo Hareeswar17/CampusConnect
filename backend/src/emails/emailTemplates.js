@@ -48,3 +48,33 @@ export function createWelcomeEmailTemplate(name, clientURL) {
   </html>
   `;
 }
+
+export function createTeacherVerificationEmailTemplate(name, code, clientURL) {
+  return `
+  <!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Teacher Access</title>
+  </head>
+  <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f6f7fb;">
+    <div style="background: #0f172a; padding: 28px; text-align: center; border-radius: 12px 12px 0 0;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Teacher Verification</h1>
+      <p style="color: #cbd5f5; margin: 8px 0 0; font-size: 14px;">CampusConnect</p>
+    </div>
+    <div style="background-color: #ffffff; padding: 32px; border-radius: 0 0 12px 12px; box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);">
+      <p style="font-size: 16px; margin: 0 0 14px;">Hello ${name},</p>
+      <p style="margin: 0 0 18px;">Use the verification code below to confirm your teacher role. This code expires in 10 minutes.</p>
+      <div style="background-color: #f1f5f9; padding: 18px; border-radius: 10px; text-align: center; letter-spacing: 6px; font-size: 28px; font-weight: 700; color: #0f172a;">
+        ${code}
+      </div>
+      <p style="margin: 18px 0 0; font-size: 13px; color: #64748b;">If you did not request this, you can ignore this email.</p>
+      <div style="text-align: center; margin: 24px 0 0;">
+        <a href=${clientURL} style="background: #2563eb; color: white; text-decoration: none; padding: 10px 24px; border-radius: 999px; font-weight: 500; display: inline-block;">Open CampusConnect</a>
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+}

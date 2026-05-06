@@ -1,0 +1,65 @@
+{
+  "createdAt": "2026-04-13T11:27:00.819Z",
+  "database": "test",
+  "excludedCollections": [
+    "messages"
+  ],
+  "collections": {
+    "_migrations": [
+      {
+        "_id": "69dccdf7b5b588f1b57751db",
+        "name": "migrate-user-defaults.js",
+        "appliedAt": "2026-04-13T11:05:27.776Z"
+      },
+      {
+        "_id": "69dccfbc3102dc4ea6cfefd6",
+        "name": "2026-04-13-sync-schema-defaults.js",
+        "appliedAt": "2026-04-13T11:13:00.555Z"
+      }
+    ],
+    "users": [
+      {
+        "_id": "69dcd102a56e64a4f0e45a11",
+        "clerkId": "user_3C7pRwtsKJosV6fkImMZzIKwRXC",
+        "email": "kannaya.2101@gmail.com",
+        "fullName": "Kanna",
+        "password": null,
+        "profilePic": "https://img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdCIsImlpZCI6Imluc18zQzVUR0l6ald1RmZqMGhNV0x4N1FEQU91QjUiLCJyaWQiOiJ1c2VyXzNDN3BSd3RzS0pvc1Y2ZmtJbU1aeklLd1JYQyIsImluaXRpYWxzIjoiSyJ9",
+        "friends": [],
+        "incomingFriendRequests": [],
+        "outgoingFriendRequests": [],
+        "createdAt": "2026-04-13T11:18:26.532Z",
+        "updatedAt": "2026-04-13T11:18:26.532Z",
+        "__v": 0
+      },
+      {
+        "_id": "69dcd1cd1d0209cbb2b501ee",
+        "clerkId": "user_3C9TuRCj93FKNM0EUovlTkelDoz",
+        "email": "thanmaicv@gmail.com",
+        "fullName": "Thanmai C",
+        "password": null,
+        "profilePic": "https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvb2F1dGhfZ29vZ2xlL2ltZ18zQzlUdUx0amJ6VTEyMFF0YktaV2dNRlhhTlIifQ",
+        "friends": [],
+        "incomingFriendRequests": [],
+        "outgoingFriendRequests": [],
+        "createdAt": "2026-04-13T11:21:49.403Z",
+        "updatedAt": "2026-04-13T11:21:49.403Z",
+        "__v": 0
+      },
+      {
+        "_id": "69dcd1cd1d0209cbb2b501f2",
+        "clerkId": "user_3C801ZnAQJmv9OtrMYneSG3290f",
+        "email": "att509474@gmail.com",
+        "fullName": "jhon doe",
+        "password": null,
+        "profilePic": "https://img.clerk.com/eyJ0eXBlIjoiZGVmYXVsdCIsImlpZCI6Imluc18zQzVUR0l6ald1RmZqMGhNV0x4N1FEQU91QjUiLCJyaWQiOiJ1c2VyXzNDODAxWm5BUUptdjlPdHJNWW5lU0czMjkwZiIsImluaXRpYWxzIjoiSiJ9",
+        "friends": [],
+        "incomingFriendRequests": [],
+        "outgoingFriendRequests": [],
+        "createdAt": "2026-04-13T11:21:49.898Z",
+        "updatedAt": "2026-04-13T11:21:49.898Z",
+        "__v": 0
+      }
+    ]
+  }
+}

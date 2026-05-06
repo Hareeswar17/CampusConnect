@@ -5,81 +5,50 @@ function ActiveTabSwitch() {
   const { activeTab, setActiveTab, incomingRequests } = useChatStore();
   const pendingCount = incomingRequests.length;
 
+  const tabs = [
+    { key: "chats", label: "Chats", icon: MessageSquare },
+    { key: "contacts", label: "Contacts", icon: Users },
+    { key: "requests", label: "Requests", icon: UserPlus, badge: pendingCount },
+  ];
+
   return (
-    <div
-      className="m-3 flex rounded-2xl border border-[var(--panel-border)] bg-[var(--panel-soft)]/90 p-1.5 backdrop-blur-xl"
-      style={{ boxShadow: "var(--clay-shadow-raised)" }}
-    >
-      <button
-        onClick={() => setActiveTab("chats")}
-        className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150 ${
-          activeTab === "chats"
-            ? "text-white"
-            : "text-slate-600 hover:bg-white/70 dark:text-zinc-300 dark:hover:bg-black/20"
-        }`}
-        style={
-          activeTab === "chats"
-            ? {
-                background:
-                  "linear-gradient(135deg, var(--neon-accent) 0%, var(--neon-accent-2) 100%)",
-                boxShadow: "var(--neon-glow)",
-              }
-            : undefined
-        }
-      >
-        <span className="inline-flex items-center gap-2">
-          <MessageSquare className="h-4 w-4" /> Chats
-        </span>
-      </button>
+    <div className="flex bg-[var(--wa-panel)] shrink-0">
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.key;
+        const Icon = tab.icon;
 
-      <button
-        onClick={() => setActiveTab("contacts")}
-        className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150 ${
-          activeTab === "contacts"
-            ? "text-white"
-            : "text-slate-600 hover:bg-white/70 dark:text-zinc-300 dark:hover:bg-black/20"
-        }`}
-        style={
-          activeTab === "contacts"
-            ? {
-                background:
-                  "linear-gradient(135deg, var(--neon-accent) 0%, var(--neon-accent-2) 100%)",
-                boxShadow: "var(--neon-glow)",
+        return (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`
+              flex-1 flex items-center justify-center gap-1.5 py-[14px] text-[13px] font-medium uppercase tracking-[0.5px]
+              relative select-none
+              transition-colors duration-150
+              ${isActive
+                ? "text-[var(--wa-green)]"
+                : "text-[var(--wa-text-secondary)] hover:bg-[var(--wa-panel-hover)]"
               }
-            : undefined
-        }
-      >
-        <span className="inline-flex items-center gap-2">
-          <Users className="h-4 w-4" /> Contacts
-        </span>
-      </button>
+            `}
+          >
+            <Icon className="w-[15px] h-[15px]" strokeWidth={2.2} />
+            <span>{tab.label}</span>
 
-      <button
-        onClick={() => setActiveTab("requests")}
-        className={`flex-1 rounded-xl px-3 py-2 text-sm font-medium transition-all duration-150 ${
-          activeTab === "requests"
-            ? "text-white"
-            : "text-slate-600 hover:bg-white/70 dark:text-zinc-300 dark:hover:bg-black/20"
-        }`}
-        style={
-          activeTab === "requests"
-            ? {
-                background:
-                  "linear-gradient(135deg, var(--neon-accent) 0%, var(--neon-accent-2) 100%)",
-                boxShadow: "var(--neon-glow)",
-              }
-            : undefined
-        }
-      >
-        <span className="inline-flex items-center gap-2">
-          <UserPlus className="h-4 w-4" /> Requests
-          {pendingCount > 0 ? (
-            <span className="inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-rose-500 px-1 text-xs text-white">
-              {pendingCount}
-            </span>
-          ) : null}
-        </span>
-      </button>
+            {(tab.badge ?? 0) > 0 ? (
+              <span className="ml-0.5 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-[var(--wa-unread-badge)] px-1 text-[10px] font-bold text-white leading-none">
+                {tab.badge}
+              </span>
+            ) : null}
+
+            {/* Active bottom bar */}
+            <span
+              className={`absolute bottom-0 left-[10%] right-[10%] h-[3px] rounded-t-sm transition-all duration-200 ${
+                isActive ? "bg-[var(--wa-green)] scale-x-100" : "bg-transparent scale-x-0"
+              }`}
+            />
+          </button>
+        );
+      })}
     </div>
   );
 }

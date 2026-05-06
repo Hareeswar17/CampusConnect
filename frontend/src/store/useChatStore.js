@@ -3,6 +3,13 @@ import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { useAuthStore } from "./useAuthStore";
 
+const normalizeId = (value) => {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "object" && value._id) return normalizeId(value._id);
+  return value.toString ? value.toString() : "";
+};
+
 export const useChatStore = create((set, get) => ({
   allContacts: [],
   discoverUsers: [],
@@ -16,6 +23,7 @@ export const useChatStore = create((set, get) => ({
   isUsersLoading: false,
   isDiscoverLoading: false,
   isMessagesLoading: false,
+  readReceiptMap: {},
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
 
   toggleSound: () => {
@@ -32,7 +40,9 @@ export const useChatStore = create((set, get) => ({
       replyingTo: null,
       chats: selectedUser
         ? state.chats.map((chat) =>
-            chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
+            normalizeId(chat._id) === normalizeId(selectedUser._id)
+              ? { ...chat, unreadCount: 0 }
+              : chat
           )
         : state.chats,
     })),
@@ -126,10 +136,17 @@ export const useChatStore = create((set, get) => ({
     set({ isMessagesLoading: true });
     try {
       const res = await axiosInstance.get(`/messages/${userId}`);
+      const readReceiptMap = get().readReceiptMap;
+      const messagesWithReadState = res.data.map((msg) =>
+        readReceiptMap[normalizeId(msg?._id)] ? { ...msg, isRead: true } : msg
+      );
+
       set((state) => ({
-        messages: res.data,
+        messages: messagesWithReadState,
         chats: state.chats.map((chat) =>
-          chat._id === userId ? { ...chat, unreadCount: 0 } : chat
+          normalizeId(chat._id) === normalizeId(userId)
+            ? { ...chat, unreadCount: 0 }
+            : chat
         ),
       }));
     } catch (error) {
@@ -151,6 +168,11 @@ export const useChatStore = create((set, get) => ({
       receiverId: selectedUser._id,
       text: messageData.text,
       image: messageData.image,
+      audioUrl: messageData.audio,
+      audioMimeType: messageData.audioMimeType,
+      audioDurationMs: messageData.audioDurationMs,
+      audioTranscript: messageData.audioTranscript,
+      translation: messageData.translation,
       replyTo: replyingTo
         ? {
             messageId: replyingTo._id,
@@ -183,18 +205,30 @@ export const useChatStore = create((set, get) => ({
 
       set((state) => {
         const hasTempMessage = state.messages.some((msg) => msg._id === tempId);
+        const normalizedMessageId = normalizeId(res.data?._id);
+        const shouldMarkRead = Boolean(state.readReceiptMap[normalizedMessageId]);
+        const persistedMessage = shouldMarkRead
+          ? { ...res.data, isRead: true }
+          : res.data;
+
         if (!hasTempMessage) {
-          return { messages: state.messages.concat(res.data) };
+          return { messages: state.messages.concat(persistedMessage) };
         }
 
         return {
-          messages: state.messages.map((msg) => (msg._id === tempId ? res.data : msg)),
+          messages: state.messages.map((msg) =>
+            msg._id === tempId ? persistedMessage : msg
+          ),
         };
       });
     } catch (error) {
       // remove optimistic message on failure
       set({ messages: messages });
-      toast.error(error.response?.data?.message || "Something went wrong");
+      if (error.response?.status === 413) {
+        toast.error("Message is too large. Please send a shorter voice clip.");
+      } else {
+        toast.error(error.response?.data?.message || "Failed to send message");
+      }
     }
   },
 
@@ -209,6 +243,11 @@ export const useChatStore = create((set, get) => ({
                 isDeleted: true,
                 text: "",
                 image: null,
+                audioUrl: null,
+                audioMimeType: null,
+                audioDurationMs: null,
+                audioTranscript: null,
+                translation: null,
                 replyTo: null,
                 isForwarded: false,
               }
@@ -248,24 +287,37 @@ export const useChatStore = create((set, get) => ({
     const socket = useAuthStore.getState().socket;
     if (!socket) return;
 
+    socket.off("newMessage");
+    socket.off("messagesRead");
+    socket.off("messageDeleted");
+
     socket.on("newMessage", (newMessage) => {
       const { selectedUser, messages, chats } = get();
       const isMessageSentFromSelectedUser = selectedUser
-        ? newMessage.senderId === selectedUser._id
+        ? normalizeId(newMessage.senderId) === normalizeId(selectedUser._id)
         : false;
 
       if (isMessageSentFromSelectedUser) {
         set({ messages: [...messages, newMessage] });
+
+        if (newMessage?._id) {
+          socket.emit("markMessagesRead", {
+            senderId: normalizeId(newMessage.senderId),
+            messageIds: [normalizeId(newMessage._id)],
+          });
+        }
       }
 
       if (!isMessageSentFromSelectedUser) {
-        const senderId = newMessage.senderId;
-        const senderAlreadyInChats = chats.some((chat) => chat._id === senderId);
+        const senderId = normalizeId(newMessage.senderId);
+        const senderAlreadyInChats = chats.some(
+          (chat) => normalizeId(chat._id) === senderId
+        );
 
         if (senderAlreadyInChats) {
           set((state) => ({
             chats: state.chats.map((chat) =>
-              chat._id === senderId
+              normalizeId(chat._id) === senderId
                 ? {
                     ...chat,
                     unreadCount: (chat.unreadCount || 0) + 1,
@@ -289,9 +341,17 @@ export const useChatStore = create((set, get) => ({
     socket.on("messagesRead", ({ messageIds }) => {
       if (!Array.isArray(messageIds) || messageIds.length === 0) return;
 
-      const messageIdSet = new Set(messageIds.map((id) => id.toString()));
+      const normalizedIds = messageIds.map((id) => normalizeId(id));
+      const messageIdSet = new Set(normalizedIds);
 
       set((state) => ({
+        readReceiptMap: normalizedIds.reduce(
+          (acc, id) => {
+            acc[id] = true;
+            return acc;
+          },
+          { ...state.readReceiptMap }
+        ),
         messages: state.messages.map((msg) =>
           messageIdSet.has(msg._id?.toString()) ? { ...msg, isRead: true } : msg
         ),
@@ -309,6 +369,11 @@ export const useChatStore = create((set, get) => ({
                 isDeleted: true,
                 text: "",
                 image: null,
+                audioUrl: null,
+                audioMimeType: null,
+                audioDurationMs: null,
+                audioTranscript: null,
+                translation: null,
                 replyTo: null,
                 isForwarded: false,
               }

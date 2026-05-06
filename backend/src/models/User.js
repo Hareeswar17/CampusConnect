@@ -24,6 +24,39 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    role: {
+      type: String,
+      enum: ["student", "teacher"],
+      default: "student",
+    },
+    roleSelected: {
+      type: Boolean,
+      default: false,
+    },
+    teacherVerification: {
+      status: {
+        type: String,
+        enum: ["none", "pending", "verified"],
+        default: "none",
+      },
+      codeHash: {
+        type: String,
+        select: false,
+        default: null,
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+      expiresAt: {
+        type: Date,
+        default: null,
+      },
+      verifiedAt: {
+        type: Date,
+        default: null,
+      },
+    },
     friends: {
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
       default: [],

@@ -24,7 +24,9 @@ export const socketAuthMiddleware = async (socket, next) => {
       return next(new Error("Unauthorized - Invalid Token"));
     }
 
-    const user = await User.findOne({ clerkId: verifiedToken.sub }).select("-password");
+    const user = await User.findOne({ clerkId: verifiedToken.sub }).select(
+      "-password -teacherVerification.codeHash"
+    );
     if (!user) {
       console.log("Socket connection rejected: User not found");
       return next(new Error("User not found"));

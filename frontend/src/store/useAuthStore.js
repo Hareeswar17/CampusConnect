@@ -3,11 +3,19 @@ import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:3000" : "/";
+const normalizeBaseUrl = (value) => value.replace(/\/+$/, "");
+const isDev = import.meta.env.MODE === "development";
+const envBaseUrl = (import.meta.env.VITE_API_BASE_URL || "").trim();
+const BASE_URL = envBaseUrl
+  ? normalizeBaseUrl(envBaseUrl)
+  : isDev
+  ? "http://localhost:3000"
+  : "/";
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
   isCheckingAuth: true,
+  isSettingRole: false,
   authError: null,
   socket: null,
   onlineUsers: [],
@@ -47,19 +55,49 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  setRole: async (role, inviteCode) => {
+    set({ isSettingRole: true });
+    try {
+      const payload = { role };
+      if (inviteCode) payload.inviteCode = inviteCode;
+      const res = await axiosInstance.post("/auth/role", payload);
+      set({ authUser: res.data });
+      toast.success(`Role set to ${role} successfully!`);
+      return { success: true };
+    } catch (error) {
+      console.log("Error in setRole:", error);
+      const message = error?.response?.data?.message || "Failed to set role";
+      toast.error(message);
+      return { success: false, message };
+    } finally {
+      set({ isSettingRole: false });
+    }
+  },
+
   connectSocket: async () => {
     const { authUser, getClerkToken } = get();
-    if (!authUser || get().socket?.connected) return;
+    const existingSocket = get().socket;
 
-    const token = await getClerkToken?.();
-    if (!token) return;
+    if (!authUser) return;
+
+    if (existingSocket) {
+      if (!existingSocket.connected) {
+        existingSocket.connect();
+      }
+      return;
+    }
 
     const socket = io(BASE_URL, {
-      auth: { token },
+      auth: async (cb) => {
+        const freshToken = await getClerkToken?.();
+        cb({ token: freshToken || "" });
+      },
       withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 10000,
     });
-
-    socket.connect();
 
     set({ socket });
 
@@ -67,6 +105,22 @@ export const useAuthStore = create((set, get) => ({
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
     });
+
+    socket.on("disconnect", () => {
+      set({ onlineUsers: [] });
+    });
+
+    socket.on("connect_error", async (error) => {
+      const message = error?.message || "";
+      const isAuthError = /unauthorized|authentication|token|jwt/i.test(message);
+
+      if (isAuthError) {
+        const freshToken = await get().getClerkToken?.();
+        socket.auth = { token: freshToken || "" };
+      }
+    });
+
+    socket.connect();
   },
 
   disconnectSocket: () => {

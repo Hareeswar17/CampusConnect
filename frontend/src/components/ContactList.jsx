@@ -5,7 +5,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { UsersIcon } from "lucide-react";
 
 function ContactList({ searchQuery = "" }) {
-  const { getAllContacts, allContacts, setSelectedUser, isUsersLoading } =
+  const { getAllContacts, allContacts, setSelectedUser, isUsersLoading, selectedUser } =
     useChatStore();
   const { onlineUsers } = useAuthStore();
 
@@ -22,46 +22,64 @@ function ContactList({ searchQuery = "" }) {
   if (isUsersLoading) return <UsersLoadingSkeleton />;
   if (filteredContacts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 text-center space-y-4">
-        <div className="w-16 h-16 rounded-full border border-[var(--panel-border)] bg-[var(--panel-soft)] flex items-center justify-center">
-          <UsersIcon className="w-8 h-8 text-brand-500" />
+      <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+        <div className="w-[72px] h-[72px] rounded-full bg-[var(--wa-search-bg)] flex items-center justify-center mb-5">
+          <UsersIcon className="w-9 h-9 text-[var(--wa-green)] opacity-70" />
         </div>
-        <div>
-          <h4 className="text-slate-900 dark:text-slate-100 font-medium mb-1">
-            No contacts yet
-          </h4>
-          <p className="text-slate-500 dark:text-slate-400 text-sm px-6">
-            Add friends from the requests tab. Accepted friends appear here.
-          </p>
-        </div>
+        <h4 className="text-[var(--wa-text-primary)] text-[16px] font-medium mb-1.5">
+          No contacts yet
+        </h4>
+        <p className="text-[var(--wa-text-secondary)] text-[13.5px] leading-relaxed max-w-[250px]">
+          Add friends from the Requests tab. Accepted friends will appear here.
+        </p>
       </div>
     );
   }
 
   return (
-    <>
-      {filteredContacts.map((contact) => (
-        <div
-          key={contact._id}
-          className="rounded-2xl border border-[var(--panel-border)] bg-[var(--panel-bg)]/90 p-4 cursor-pointer hover:bg-[var(--panel-soft)] transition-all duration-200 backdrop-blur-xl"
-          style={{ boxShadow: "var(--clay-shadow-raised)" }}
-          onClick={() => setSelectedUser(contact)}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`avatar ${onlineUsers.includes(contact._id) ? "online" : "offline"}`}
-            >
-              <div className="size-12 rounded-full">
-                <img src={contact.profilePic || "/avatar.png"} />
-              </div>
+    <div>
+      <div className="px-4 py-[10px]">
+        <p className="text-[12.5px] text-[var(--wa-green)] font-medium uppercase tracking-wider">
+          {filteredContacts.length} contact{filteredContacts.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+      {filteredContacts.map((contact) => {
+        const isOnline = onlineUsers.includes(contact._id);
+        const isSelected = selectedUser?._id === contact._id;
+
+        return (
+          <div
+            key={contact._id}
+            className={`wa-chat-item flex items-center gap-[13px] px-3 py-[10px] cursor-pointer
+              ${isSelected ? "bg-[var(--wa-panel-active)]" : "hover:bg-[var(--wa-panel-hover)]"}
+            `}
+            onClick={() => setSelectedUser(contact)}
+          >
+            <div className="relative shrink-0">
+              <img
+                src={contact.profilePic || "/avatar.png"}
+                alt={contact.fullName}
+                className="w-[49px] h-[49px] rounded-full object-cover"
+              />
+              {isOnline && (
+                <span className="absolute bottom-0 right-0 w-[13px] h-[13px] bg-[var(--wa-green)] rounded-full border-[2.5px] border-[var(--wa-panel)]" />
+              )}
             </div>
-            <h4 className="text-slate-900 dark:text-slate-100 font-medium">
-              {contact.fullName}
-            </h4>
+
+            <div className="flex-1 min-w-0 border-b border-[var(--wa-divider)] pb-[10px] pt-[2px]">
+              <h3 className="text-[16.5px] font-normal text-[var(--wa-text-primary)] truncate leading-tight">
+                {contact.fullName}
+              </h3>
+              <p className={`text-[13px] mt-[2px] truncate ${
+                isOnline ? "text-[var(--wa-green)]" : "text-[var(--wa-text-secondary)]"
+              }`}>
+                {isOnline ? "Online" : "Offline"}
+              </p>
+            </div>
           </div>
-        </div>
-      ))}
-    </>
+        );
+      })}
+    </div>
   );
 }
 export default ContactList;

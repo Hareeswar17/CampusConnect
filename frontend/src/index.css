@@ -1,7 +1,296 @@
+@import url("https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════
+   Modern WhatsApp Web 2025 — Design Tokens
+   ══════════════════════════════════════════════════════ */
+:root {
+  /* Page chrome */
+  --wa-page-bg: #f8f9ff;
+  --wa-banner: #2563eb;
+  --wa-shell-shadow: 0 8px 24px rgba(37, 99, 235, 0.12);
+
+  /* Panel surfaces */
+  --wa-panel: #ffffff;
+  --wa-panel-header: #f1f5ff;
+  --wa-panel-hover: #eef2ff;
+  --wa-panel-active: #e0e7ff;
+  --wa-panel-border: #e2e8f0;
+
+  /* Chat canvas */
+  --wa-chat-bg: #f8f9ff;
+  --wa-chat-wallpaper: rgba(37, 99, 235, 0.05);
+
+  /* Bubbles */
+  --wa-outgoing: #e0e7ff;
+  --wa-outgoing-deeper: #c7d2fe;
+  --wa-outgoing-fg: #0f172a;
+  --wa-incoming: #ffffff;
+  --wa-incoming-fg: #0f172a;
+  --wa-bubble-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --wa-tail-outgoing: #e0e7ff;
+  --wa-tail-incoming: #ffffff;
+
+  /* Input */
+  --wa-input-bg: #ffffff;
+  --wa-input-surface: #f1f5ff;
+
+  /* Search */
+  --wa-search-bg: #f1f5ff;
+  --wa-search-focus: #ffffff;
+
+  /* Text & icons */
+  --wa-text-primary: #0f172a;
+  --wa-text-secondary: #64748b;
+  --wa-icon: #475569;
+  --wa-icon-hover: #1e293b;
+
+  /* Accent */
+  --wa-green: #2563eb;
+  --wa-green-deep: #1d4ed8;
+  --wa-read: #38bdf8;
+  --wa-unread-badge: #2563eb;
+  --wa-accent-sky: #bfe7ff;
+  --wa-accent-gray: #e2e8f0;
+
+  /* Dividers */
+  --wa-divider: #e2e8f0;
+
+  /* Dropdowns & overlays */
+  --wa-dropdown-bg: #ffffff;
+  --wa-dropdown-hover: #f1f5ff;
+  --wa-dropdown-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  --wa-overlay: rgba(15, 23, 42, 0.35);
+
+  /* Header accent */
+  --wa-header: #2563eb;
+  --wa-header-fg: #ffffff;
+}
+
+.dark {
+  --wa-page-bg: #050b14;
+  --wa-banner: transparent;
+  --wa-shell-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+
+  --wa-panel: rgba(15, 23, 42, 0.5);
+  --wa-panel-header: rgba(17, 24, 39, 0.6);
+  --wa-panel-hover: rgba(30, 41, 59, 0.6);
+  --wa-panel-active: rgba(31, 41, 55, 0.8);
+  --wa-panel-border: rgba(255, 255, 255, 0.05);
+
+  --wa-chat-bg: transparent;
+  --wa-chat-wallpaper: rgba(148, 163, 184, 0.03);
+
+  --wa-outgoing: rgba(59, 130, 246, 0.2);
+  --wa-outgoing-deeper: rgba(37, 99, 235, 0.3);
+  --wa-outgoing-fg: #ffffff;
+  --wa-incoming: rgba(255, 255, 255, 0.05);
+  --wa-incoming-fg: #e2e8f0;
+  --wa-bubble-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --wa-tail-outgoing: transparent;
+  --wa-tail-incoming: transparent;
+
+  --wa-input-bg: rgba(15, 23, 42, 0.5);
+  --wa-input-surface: rgba(17, 24, 39, 0.5);
+
+  --wa-search-bg: rgba(255, 255, 255, 0.05);
+  --wa-search-focus: rgba(255, 255, 255, 0.1);
+
+  --wa-text-primary: #f8fafc;
+  --wa-text-secondary: #94a3b8;
+  --wa-icon: #94a3b8;
+  --wa-icon-hover: #f8fafc;
+
+  --wa-green: #3b82f6; /* Blue variant */
+  --wa-green-deep: #2563eb;
+  --wa-read: #38bdf8;
+  --wa-unread-badge: #3b82f6;
+  --wa-accent-sky: rgba(30, 64, 175, 0.3);
+  --wa-accent-gray: rgba(31, 41, 55, 0.5);
+
+  --wa-divider: rgba(255, 255, 255, 0.05);
+
+  --wa-dropdown-bg: rgba(15, 23, 42, 0.85);
+  --wa-dropdown-hover: rgba(30, 41, 59, 0.8);
+  --wa-dropdown-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --wa-overlay: rgba(0, 0, 0, 0.6);
+
+  --wa-header: rgba(37, 99, 235, 0.8);
+  --wa-header-fg: #ffffff;
+}
+
+/* ─── Base ─── */
+@layer base {
+  body {
+    @apply antialiased;
+    font-family: "Lexend", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif;
+    background: var(--wa-page-bg);
+    color: var(--wa-text-primary);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+  }
+  .dark * {
+    scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  }
+
+  ::selection {
+    background: rgba(37, 99, 235, 0.2);
+  }
+}
+
+/* ══════════════════════════════════════════
+   App Shell — top banner + centered container
+   ────────────────────────────────────────── */
+.wa-shell-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 127px;
+  background: var(--wa-banner);
+  z-index: 0;
+}
+
+.wa-shell-container {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+  background: var(--wa-panel);
+  box-shadow: var(--wa-shell-shadow);
+}
+
+.dark .wa-shell-container {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@media (min-width: 1440px) {
+  .wa-shell-container {
+    margin: 19px auto;
+    height: calc(100vh - 38px);
+    max-width: 1600px;
+    border-radius: 4px;
+  }
+}
+
+/* ══════════════════════════════════════════
+   Chat wallpaper — modern subtle doodle
+   ────────────────────────────────────────── */
+.wa-chat-bg {
+  background-color: var(--wa-chat-bg);
+  position: relative;
+}
+
+.wa-chat-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='400' height='400' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='p' width='200' height='200' patternUnits='userSpaceOnUse'%3E%3Cg fill='none' stroke='%23a0adb5' stroke-width='0.4' opacity='0.5'%3E%3Cpath d='M20 15c3-5 8-5 11 0s-3 10-5.5 5S17 20 20 15z'/%3E%3Ccircle cx='70' cy='25' r='4.5'/%3E%3Crect x='120' y='12' width='11' height='15' rx='2.5'/%3E%3Cpath d='M170 18l6 10h-12z'/%3E%3Ccircle cx='30' cy='75' r='3.5'/%3E%3Cpath d='M80 70c2-4 6-4 8 0s-2 8-4 4-4-8-4-4z'/%3E%3Crect x='130' y='68' width='9' height='12' rx='2'/%3E%3Cpath d='M175 75l5 8h-10z'/%3E%3Cpath d='M25 130c3-5 8-5 11 0s-3 10-5.5 5-2.5-10 0-5z'/%3E%3Ccircle cx='85' cy='135' r='5'/%3E%3Crect x='135' y='128' width='10' height='13' rx='2'/%3E%3Cpath d='M180 133l6 10h-12z'/%3E%3Ccircle cx='40' cy='180' r='3'/%3E%3Cpath d='M90 175l5 8h-10z'/%3E%3Crect x='140' y='172' width='8' height='11' rx='2'/%3E%3Cpath d='M185 178c2-4 6-4 8 0s-2 8-4 4-4-8-4-4z'/%3E%3C/g%3E%3C/pattern%3E%3C/defs%3E%3Crect width='400' height='400' fill='url(%23p)'/%3E%3C/svg%3E");
+  background-size: 400px 400px;
+}
+
+.dark .wa-chat-bg::before {
+  opacity: 0.06;
+  filter: invert(1);
+}
+
+/* ══════════════════════════════════════════
+   Message bubbles
+   ────────────────────────────────────────── */
+.wa-bubble-outgoing {
+  position: relative;
+  background: var(--wa-outgoing);
+  color: var(--wa-outgoing-fg);
+  border-radius: 16px 16px 4px 16px;
+  box-shadow: var(--wa-bubble-shadow);
+}
+
+.wa-bubble-incoming {
+  position: relative;
+  background: var(--wa-incoming);
+  color: var(--wa-incoming-fg);
+  border-radius: 16px 16px 16px 4px;
+  box-shadow: var(--wa-bubble-shadow);
+}
+
+.dark .wa-bubble-outgoing,
+.dark .wa-bubble-incoming {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Make consecutive messages fully rounded */
+.wa-bubble-no-tail.wa-bubble-outgoing {
+  border-radius: 16px;
+}
+.wa-bubble-no-tail.wa-bubble-incoming {
+  border-radius: 16px;
+}
+
+/* ══════════════════════════════════════════
+   Smooth transitions & micro-interactions
+   ────────────────────────────────────────── */
+.wa-transition-panel {
+  transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 200ms ease,
+              transform 200ms ease;
+}
+
+.wa-sidebar-enter {
+  animation: waSidebarEnter 200ms ease-out;
+}
+
+@keyframes waSidebarEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.wa-chat-enter {
+  animation: waChatEnter 200ms ease-out;
+}
+
+@keyframes waChatEnter {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Hover lift for chat items */
+.wa-chat-item {
+  transition: background-color 150ms ease;
+}
+
+.wa-chat-item:active {
+  background-color: var(--wa-panel-active);
+}
+
+/* ══════════════════════════════════════════
+   Auth pages — preserved from original
+   ────────────────────────────────────────── */
 :root {
   --app-bg: radial-gradient(circle at 18% 18%, #f3e8ff 0%, #dbeafe 36%, #ecfeff 72%, #eff6ff 100%);
   --app-fg: #0f172a;
@@ -10,16 +299,6 @@
   --panel-bg: rgba(255, 255, 255, 0.58);
   --panel-soft: rgba(248, 250, 255, 0.76);
   --panel-border: rgba(255, 255, 255, 0.7);
-  --chat-canvas: rgba(236, 242, 255, 0.65);
-  --chat-canvas-soft: rgba(248, 250, 255, 0.8);
-  --chat-canvas-dot: rgba(99, 102, 241, 0.08);
-  --bubble-self-bg: rgba(191, 219, 254, 0.9);
-  --bubble-self-fg: #020617;
-  --bubble-self-shadow: var(--clay-shadow-raised);
-  --bubble-peer-bg: rgba(255, 255, 255, 0.52);
-  --bubble-peer-fg: #0f172a;
-  --floating-bg: rgba(255, 255, 255, 0.76);
-  --floating-border: rgba(255, 255, 255, 0.8);
   --clay-shadow-raised: 0 20px 46px rgba(99, 102, 241, 0.18),
     0 8px 20px rgba(30, 41, 59, 0.08);
   --neon-accent: #60a5fa;
@@ -27,69 +306,26 @@
   --neon-glow: 0 0 0 1px rgba(96, 165, 250, 0.34), 0 0 24px rgba(96, 165, 250, 0.25), 0 0 44px rgba(167, 139, 250, 0.16);
 }
 
-.dark {
-  --app-bg: radial-gradient(circle at 14% 10%, #142a63 0%, #0b1332 36%, #090f26 68%, #060912 100%);
-  --app-fg: #e6ecff;
-  --clay-surface: rgba(14, 24, 48, 0.7);
-  --clay-border: rgba(71, 85, 105, 0.38);
-  --panel-bg: rgba(15, 25, 52, 0.66);
-  --panel-soft: rgba(10, 18, 40, 0.62);
-  --panel-border: rgba(71, 85, 105, 0.34);
-  --chat-canvas: rgba(7, 12, 30, 0.66);
-  --chat-canvas-soft: rgba(10, 18, 42, 0.5);
-  --chat-canvas-dot: rgba(96, 165, 250, 0.12);
-  --bubble-self-bg: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%);
-  --bubble-self-fg: #e6ecff;
-  --bubble-self-shadow: var(--clay-shadow-raised);
-  --bubble-peer-bg: rgba(255, 255, 255, 0.08);
-  --bubble-peer-fg: #e6ecff;
-  --floating-bg: rgba(13, 22, 45, 0.86);
-  --floating-border: rgba(148, 163, 184, 0.24);
-  --clay-shadow-raised: 0 26px 56px rgba(4, 7, 20, 0.62),
-    0 10px 26px rgba(30, 64, 175, 0.2);
-  --neon-accent: #60a5fa;
-  --neon-accent-2: #a78bfa;
-  --neon-glow: 0 0 0 1px rgba(96, 165, 250, 0.35), 0 0 30px rgba(96, 165, 250, 0.28), 0 0 52px rgba(167, 139, 250, 0.22);
-}
-
-@layer base {
-  body {
-    @apply antialiased;
-    background: var(--app-bg);
-    color: var(--app-fg);
-    transition: background-color 200ms ease, color 200ms ease;
-  }
-}
-
 .input {
   @apply w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-4 text-slate-900 placeholder-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder-slate-500;
 }
-
 .auth-input-icon {
   @apply absolute left-3 top-1/2 size-5 -translate-y-1/2 text-slate-400 dark:text-slate-500;
 }
-
 .auth-input-label {
   @apply mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300;
 }
-
 .auth-badge {
   @apply inline-flex items-center rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300;
 }
-
 .auth-btn {
   @apply w-full rounded-lg bg-brand-500 py-2.5 font-medium text-white transition-colors duration-150 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:cursor-not-allowed disabled:opacity-60;
 }
-
 .auth-link {
   @apply inline-block rounded-lg px-4 py-2 text-sm text-brand-600 transition-colors duration-150 hover:text-brand-500 dark:text-brand-500 dark:hover:text-brand-500;
 }
 
+/* Legacy compat */
 .chat-theme-canvas {
-  background-color: var(--chat-canvas);
-  background-image:
-    radial-gradient(circle at 20px 20px, var(--chat-canvas-dot) 1px, transparent 1px),
-    radial-gradient(circle at 90px 70px, var(--chat-canvas-dot) 1px, transparent 1px),
-    linear-gradient(160deg, var(--chat-canvas-soft) 0%, var(--chat-canvas) 100%);
-  background-size: 120px 120px, 120px 120px, auto;
+  background-color: var(--wa-chat-bg);
 }

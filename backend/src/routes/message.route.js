@@ -10,6 +10,8 @@ import {
   rejectFriendRequest,
   sendFriendRequest,
   sendMessage,
+  translateText,
+  translateVoice,
 } from "../controllers/message.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { arcjetProtection } from "../middleware/arcjet.middleware.js";
@@ -27,6 +29,8 @@ router.post("/requests/:id", sendFriendRequest);
 router.patch("/requests/:id/accept", acceptFriendRequest);
 router.patch("/requests/:id/reject", rejectFriendRequest);
 router.get("/chats", getChatPartners);
+router.post("/translate/text", translateText);
+router.post("/translate/voice", translateVoice);
 router.get("/:id", getMessagesByUserId);
 router.post("/send/:id", sendMessage);
 router.delete("/:id", deleteMessage);

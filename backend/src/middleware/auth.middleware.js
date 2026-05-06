@@ -56,7 +56,9 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - No Clerk session" });
     }
 
-    let user = await User.findOne({ clerkId: clerkUserId }).select("-password");
+    let user = await User.findOne({ clerkId: clerkUserId }).select(
+      "-password -teacherVerification.codeHash"
+    );
 
     if (!user) {
       let email = getEmailFromClaims(auth.sessionClaims);
@@ -91,7 +93,9 @@ export const protectRoute = async (req, res, next) => {
           existingUser.profilePic = profilePic;
         }
         await existingUser.save();
-        user = await User.findById(existingUser._id).select("-password");
+        user = await User.findById(existingUser._id).select(
+          "-password -teacherVerification.codeHash"
+        );
       }
 
       if (!user) {
@@ -102,7 +106,9 @@ export const protectRoute = async (req, res, next) => {
           password: null,
           profilePic,
         });
-        user = await User.findById(createdUser._id).select("-password");
+        user = await User.findById(createdUser._id).select(
+          "-password -teacherVerification.codeHash"
+        );
       }
     }
 
@@ -112,5 +118,79 @@ export const protectRoute = async (req, res, next) => {
   } catch (error) {
     console.log("Error in protectRoute middleware:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+import Group from "../models/Group.js";
+import mongoose from "mongoose";
+
+export const requireTeacher = async (req, res, next) => {
+  if (req.user?.role !== "teacher") {
+    return res.status(403).json({ message: "Teacher access required" });
+  }
+
+  const { groupId } = req.params;
+  if (groupId) {
+    if (!mongoose.Types.ObjectId.isValid(groupId)) {
+      return res.status(400).json({ message: "Invalid group ID" });
+    }
+    try {
+      // Check if group is already fetched by another middleware
+      const group = req.group || await Group.findById(groupId);
+      if (!group) return res.status(404).json({ message: "Group not found" });
+
+      const isGroupTeacher = group.teachers.some(
+        (id) => id.toString() === req.user._id.toString()
+      );
+
+      if (!isGroupTeacher) {
+        return res.status(403).json({ message: "You are not an instructor for this group" });
+      }
+      req.group = group;
+    } catch (error) {
+      return res.status(500).json({ message: "Server error verifying group teacher" });
+    }
+  }
+
+  next();
+};
+
+export const requireGroupMember = async (req, res, next) => {
+  const { groupId } = req.params;
+  if (!groupId) return next();
+  
+  if (!mongoose.Types.ObjectId.isValid(groupId)) {
+    return res.status(400).json({ message: "Invalid group ID" });
+  }
+
+  try {
+    const group = req.group || await Group.findById(groupId);
+    if (!group) return res.status(404).json({ message: "Group not found" });
+
+    const isMember = group.members.some(
+      (id) => id.toString() === req.user._id.toString()
+    );
+    const isTeacher = group.teachers.some(
+      (id) => id.toString() === req.user._id.toString()
+    );
+
+    if (!isMember && !isTeacher) {
+      // We allow non-members to view the group basic details (getGroup) before joining, 
+      // but maybe not for sub-resources. Let's pass if it's the root GET or JOIN.
+      if (req.path === '/' && req.method === 'GET') {
+        req.group = group;
+        return next();
+      }
+      if (req.path === '/join' && req.method === 'POST') {
+        req.group = group;
+        return next();
+      }
+      return res.status(403).json({ message: "You are not a member of this group" });
+    }
+    
+    req.group = group;
+    next();
+  } catch (error) {
+    return res.status(500).json({ message: "Server error verifying group member" });
   }
 };
