@@ -22,8 +22,18 @@ import { formatDateTimeRange } from "../utils/time";
 
 /* ────────── Calendar helpers ────────── */
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 const DAY_HEADERS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -54,6 +64,7 @@ function GroupEventsPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [tab, setTab] = useState("upcoming");
 
   // Form State
   const [title, setTitle] = useState("");
@@ -66,7 +77,10 @@ function GroupEventsPage() {
   const [links, setLinks] = useState([]);
   const [coverImage, setCoverImage] = useState("");
 
-  const isTeacher = authUser?.role === "teacher" || group?.isTeacher || (group.teachers && group.teachers.includes(authUser?._id));
+  const isTeacher =
+    authUser?.role === "teacher" ||
+    group?.isTeacher ||
+    (group.teachers && group.teachers.includes(authUser?._id));
 
   // Calendar State
   const today = new Date();
@@ -76,8 +90,11 @@ function GroupEventsPage() {
 
   useEffect(() => {
     fetchGroup(groupId);
-    fetchEvents(groupId);
-  }, [fetchGroup, fetchEvents, groupId]);
+  }, [fetchGroup, groupId]);
+
+  useEffect(() => {
+    fetchEvents(groupId, tab, 200);
+  }, [fetchEvents, groupId, tab]);
 
   /* Build calendar marks */
   const markedDays = useMemo(() => {
@@ -95,7 +112,7 @@ function GroupEventsPage() {
 
   const calendarCells = useMemo(
     () => buildCalendarDays(calYear, calMonth),
-    [calYear, calMonth]
+    [calYear, calMonth],
   );
 
   const prevMonth = () => {
@@ -143,8 +160,12 @@ function GroupEventsPage() {
     setTitle(event.title || "");
     setType(event.type || "");
     setLocation(event.location || "");
-    setStartAt(event.startAt ? new Date(event.startAt).toISOString().slice(0, 16) : "");
-    setEndAt(event.endAt ? new Date(event.endAt).toISOString().slice(0, 16) : "");
+    setStartAt(
+      event.startAt ? new Date(event.startAt).toISOString().slice(0, 16) : "",
+    );
+    setEndAt(
+      event.endAt ? new Date(event.endAt).toISOString().slice(0, 16) : "",
+    );
     setDescription(event.description || "");
     setLinks(event.links || []);
     setLinkInput("");
@@ -217,7 +238,6 @@ function GroupEventsPage() {
             Groups / {group.title || "Group"} / Events
           </div>
           <div className="mt-2 grid gap-6 lg:grid-cols-[450px_minmax(0,1fr)]">
-            
             {/* Left Sidebar: Calendar */}
             <aside className="space-y-4 wa-sidebar-enter">
               <div
@@ -321,10 +341,13 @@ function GroupEventsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-2xl font-semibold text-[var(--wa-text-primary)]">
-                    {selectedDay ? `${MONTH_NAMES[calMonth]} ${selectedDay} Events` : "Upcoming Events"}
+                    {selectedDay
+                      ? `${MONTH_NAMES[calMonth]} ${selectedDay} Events`
+                      : "Upcoming Events"}
                   </h2>
                   <p className="mt-1 text-sm text-[var(--wa-text-secondary)]">
-                    Manage critical milestones, project deadlines, and collaborative sessions.
+                    Manage critical milestones, project deadlines, and
+                    collaborative sessions.
                   </p>
                 </div>
                 {isTeacher && !showForm && (
@@ -338,22 +361,52 @@ function GroupEventsPage() {
                 )}
               </div>
 
+              {/* Tabs */}
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTab("upcoming")}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${tab === "upcoming" ? "bg-[var(--wa-green)] text-white" : "bg-[var(--wa-panel-active)] text-[var(--wa-text-secondary)]"}`}
+                >
+                  Upcoming
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("completed")}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold ${tab === "completed" ? "bg-[var(--wa-green)] text-white" : "bg-[var(--wa-panel-active)] text-[var(--wa-text-secondary)]"}`}
+                >
+                  Completed
+                </button>
+                <div className="ml-auto text-xs text-[var(--wa-text-secondary)]">
+                  Showing: {tab}
+                </div>
+              </div>
+
               {/* Event Form */}
               {isTeacher && showForm && (
                 <div className="rounded-2xl border border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-5 space-y-4 animate-in slide-in-from-top-4 fade-in duration-300">
                   <div className="flex items-center justify-between border-b border-[var(--wa-panel-border)] pb-3">
                     <div className="text-sm font-semibold text-[var(--wa-text-primary)] flex items-center gap-2">
-                      {editingId ? <Pencil className="w-4 h-4 text-[var(--wa-green)]" /> : <Plus className="w-4 h-4 text-[var(--wa-green)]" />}
+                      {editingId ? (
+                        <Pencil className="w-4 h-4 text-[var(--wa-green)]" />
+                      ) : (
+                        <Plus className="w-4 h-4 text-[var(--wa-green)]" />
+                      )}
                       {editingId ? "Edit Event" : "Create New Event"}
                     </div>
-                    <button onClick={resetForm} className="text-[var(--wa-text-secondary)] hover:text-[var(--wa-text-primary)]">
+                    <button
+                      onClick={resetForm}
+                      className="text-[var(--wa-text-secondary)] hover:text-[var(--wa-text-primary)]"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="md:col-span-2">
-                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">Title *</label>
+                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Title *
+                      </label>
                       <input
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
@@ -362,7 +415,9 @@ function GroupEventsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">Starts At *</label>
+                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Starts At *
+                      </label>
                       <input
                         type="datetime-local"
                         value={startAt}
@@ -371,7 +426,9 @@ function GroupEventsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">Ends At</label>
+                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Ends At
+                      </label>
                       <input
                         type="datetime-local"
                         value={endAt}
@@ -380,7 +437,9 @@ function GroupEventsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">Type</label>
+                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Type
+                      </label>
                       <input
                         value={type}
                         onChange={(e) => setType(e.target.value)}
@@ -389,7 +448,9 @@ function GroupEventsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">Location</label>
+                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Location
+                      </label>
                       <input
                         value={location}
                         onChange={(e) => setLocation(e.target.value)}
@@ -398,7 +459,9 @@ function GroupEventsPage() {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">Description</label>
+                      <label className="text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Description
+                      </label>
                       <textarea
                         rows={2}
                         value={description}
@@ -430,7 +493,9 @@ function GroupEventsPage() {
                         <input
                           value={linkInput}
                           onChange={(e) => setLinkInput(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleAddLink()}
+                          onKeyDown={(e) =>
+                            e.key === "Enter" && handleAddLink()
+                          }
                           placeholder="https://docs.google.com/..."
                           className="flex-1 rounded-lg border border-[var(--wa-panel-border)] bg-[var(--wa-search-bg)] px-3 py-2 text-sm text-[var(--wa-text-primary)] outline-none focus:border-[var(--wa-green)] transition-colors"
                         />
@@ -445,9 +510,18 @@ function GroupEventsPage() {
                       {links.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-2">
                           {links.map((link, idx) => (
-                            <div key={idx} className="flex items-center gap-1 bg-[var(--wa-panel-active)] px-2 py-1 rounded-md text-xs border border-[var(--wa-panel-border)]">
-                              <span className="truncate max-w-[200px] text-[var(--wa-green)]">{link}</span>
-                              <button type="button" onClick={() => handleRemoveLink(idx)} className="text-[var(--wa-text-secondary)] hover:text-red-500">
+                            <div
+                              key={idx}
+                              className="flex items-center gap-1 bg-[var(--wa-panel-active)] px-2 py-1 rounded-md text-xs border border-[var(--wa-panel-border)]"
+                            >
+                              <span className="truncate max-w-[200px] text-[var(--wa-green)]">
+                                {link}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveLink(idx)}
+                                className="text-[var(--wa-text-secondary)] hover:text-red-500"
+                              >
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
@@ -487,11 +561,13 @@ function GroupEventsPage() {
                     {/* Cover Image Header */}
                     {event.coverImage && (
                       <div className="h-32 w-full relative overflow-hidden">
-                        <img 
-                          src={event.coverImage} 
-                          alt="Cover" 
+                        <img
+                          src={event.coverImage}
+                          alt="Cover"
                           className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
-                          onError={(e) => { e.target.style.display = 'none' }}
+                          onError={(e) => {
+                            e.target.style.display = "none";
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[var(--wa-panel)] to-transparent" />
                       </div>
@@ -499,11 +575,13 @@ function GroupEventsPage() {
 
                     <div className="p-5 relative">
                       <div className="flex items-start justify-between">
-                        <span className={`shrink-0 inline-block whitespace-nowrap rounded-full px-3 py-1 text-[10px] shadow-sm ${
-                          (event.type || "").toLowerCase() === "exam"
-                            ? "bg-red-500/10 text-red-500 font-extrabold border border-red-500/30"
-                            : "bg-[var(--wa-panel-active)] text-[var(--wa-accent-sky)] font-semibold border border-[var(--wa-accent-sky)]/20"
-                        }`}>
+                        <span
+                          className={`shrink-0 inline-block whitespace-nowrap rounded-full px-3 py-1 text-[10px] shadow-sm ${
+                            (event.type || "").toLowerCase() === "exam"
+                              ? "bg-red-500/10 text-red-500 font-extrabold border border-red-500/30"
+                              : "bg-[var(--wa-panel-active)] text-[var(--wa-accent-sky)] font-semibold border border-[var(--wa-accent-sky)]/20"
+                          }`}
+                        >
                           {(event.type || "Event").toUpperCase()}
                         </span>
                         {isTeacher && (
@@ -530,7 +608,7 @@ function GroupEventsPage() {
                       <div className="mt-3 text-xl font-bold text-[var(--wa-text-primary)]">
                         {event.title}
                       </div>
-                      
+
                       {event.description && (
                         <p className="mt-2 text-sm text-[var(--wa-text-secondary)] line-clamp-2">
                           {event.description}
@@ -540,33 +618,50 @@ function GroupEventsPage() {
                       <div className="mt-4 flex flex-wrap gap-3">
                         <div className="flex items-center gap-2 text-xs text-[var(--wa-text-secondary)] bg-[var(--wa-panel-active)] px-3 py-2 rounded-lg border border-[var(--wa-panel-border)] shadow-sm hover:border-[var(--wa-green)] transition-colors">
                           <Clock className="w-4 h-4 text-[var(--wa-green)]" />
-                          <span className="font-medium">{formatDateTimeRange(event.startAt, event.endAt)}</span>
+                          <span className="font-medium">
+                            {formatDateTimeRange(event.startAt, event.endAt)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2 text-xs text-[var(--wa-text-secondary)] bg-[var(--wa-panel-active)] px-3 py-2 rounded-lg border border-[var(--wa-panel-border)] shadow-sm hover:border-amber-500 transition-colors">
                           <MapPin className="w-4 h-4 text-amber-500" />
-                          <span className="font-medium truncate max-w-[200px]">{event.location || "Location TBD"}</span>
+                          <span className="font-medium truncate max-w-[200px]">
+                            {event.location || "Location TBD"}
+                          </span>
                         </div>
                       </div>
 
                       {/* Links Section */}
                       {event.links && event.links.length > 0 && (
                         <div className="mt-4 pt-4 border-t border-[var(--wa-panel-border)]">
-                          <div className="text-[10px] font-semibold text-[var(--wa-text-secondary)] uppercase tracking-wider mb-2">Related Links</div>
+                          <div className="text-[10px] font-semibold text-[var(--wa-text-secondary)] uppercase tracking-wider mb-2">
+                            Related Links
+                          </div>
                           <div className="flex flex-wrap gap-2">
-                            {event.links.map((link, idx) => (
-                              <a
-                                key={idx}
-                                href={link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--wa-search-bg)] border border-[var(--wa-panel-border)] rounded-lg text-xs text-[var(--wa-text-primary)] hover:border-[var(--wa-green)] hover:text-[var(--wa-green)] transition-colors group/link"
-                              >
-                                <Link2 className="w-3.5 h-3.5 text-[var(--wa-text-secondary)] group-hover/link:text-[var(--wa-green)]" />
-                                <span className="truncate max-w-[200px]">
-                                  {new URL(link).hostname.replace('www.', '')}
-                                </span>
-                              </a>
-                            ))}
+                            {event.links.map((link, idx) => {
+                              let host = link;
+                              try {
+                                host = new URL(link).hostname.replace(
+                                  "www.",
+                                  "",
+                                );
+                              } catch (err) {
+                                // leave host as the original link string
+                              }
+                              return (
+                                <a
+                                  key={idx}
+                                  href={link}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--wa-search-bg)] border border-[var(--wa-panel-border)] rounded-lg text-xs text-[var(--wa-text-primary)] hover:border-[var(--wa-green)] hover:text-[var(--wa-green)] transition-colors group/link"
+                                >
+                                  <Link2 className="w-3.5 h-3.5 text-[var(--wa-text-secondary)] group-hover/link:text-[var(--wa-green)]" />
+                                  <span className="truncate max-w-[200px]">
+                                    {host}
+                                  </span>
+                                </a>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -579,9 +674,13 @@ function GroupEventsPage() {
                     <div className="w-12 h-12 rounded-full bg-[var(--wa-panel-active)] flex items-center justify-center mx-auto mb-3">
                       <CalendarDays className="w-6 h-6 text-[var(--wa-text-secondary)]" />
                     </div>
-                    <div className="text-[var(--wa-text-primary)] font-medium">No events found</div>
+                    <div className="text-[var(--wa-text-primary)] font-medium">
+                      No events found
+                    </div>
                     <div className="text-sm text-[var(--wa-text-secondary)] mt-1">
-                      {selectedDay ? `Nothing scheduled for ${MONTH_NAMES[calMonth]} ${selectedDay}.` : "No upcoming events yet."}
+                      {selectedDay
+                        ? `Nothing scheduled for ${MONTH_NAMES[calMonth]} ${selectedDay}.`
+                        : "No upcoming events yet."}
                     </div>
                   </div>
                 ) : null}

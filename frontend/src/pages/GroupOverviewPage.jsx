@@ -20,8 +20,18 @@ import { formatDateTimeRange, formatDateTime } from "../utils/time";
 
 /* ────────── Calendar helpers ────────── */
 const MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 const DAY_HEADERS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -53,11 +63,22 @@ function GroupOverviewPage() {
   const events = eventsByGroup[groupId] || [];
   const tasks = tasksByGroup[groupId] || [];
   const projects = projectsByGroup[groupId] || [];
-  
-  const isTeacher = authUser?.role === "teacher" || group?.isTeacher || (group.teachers && group.teachers.includes(authUser?._id));
+  const now = new Date();
 
-  // Take next 3 events and a few recent tasks
-  const upcomingEvents = events.slice(0, 3);
+  const isTeacher =
+    authUser?.role === "teacher" ||
+    group?.isTeacher ||
+    (group.teachers && group.teachers.includes(authUser?._id));
+
+  const upcomingEvents = useMemo(() => {
+    return [...events]
+      .filter((event) => {
+        const cutoff = event.endAt || event.startAt;
+        return cutoff ? new Date(cutoff) >= now : true;
+      })
+      .sort((a, b) => new Date(a.startAt) - new Date(b.startAt))
+      .slice(0, 3);
+  }, [events, now]);
   const recentTasks = tasks.slice(0, 5);
 
   const today = new Date();
@@ -67,7 +88,7 @@ function GroupOverviewPage() {
 
   useEffect(() => {
     fetchGroup(groupId);
-    fetchEvents(groupId);
+    fetchEvents(groupId, "upcoming", 20);
     fetchTasks(groupId);
     fetchProjects(groupId);
   }, [fetchGroup, fetchEvents, fetchTasks, fetchProjects, groupId]);
@@ -99,7 +120,7 @@ function GroupOverviewPage() {
 
   const calendarCells = useMemo(
     () => buildCalendarDays(calYear, calMonth),
-    [calYear, calMonth]
+    [calYear, calMonth],
   );
 
   const prevMonth = () => {
@@ -161,7 +182,9 @@ function GroupOverviewPage() {
                   {group.title || "Group"}
                 </h2>
                 <p className="mt-2 text-sm text-[var(--wa-text-secondary)] max-w-2xl">
-                  {group.description || group.subtitle || "Welcome to your class hub."}
+                  {group.description ||
+                    group.subtitle ||
+                    "Welcome to your class hub."}
                 </p>
                 {group.membersCount != null && (
                   <div className="mt-3 inline-block rounded-full bg-[var(--wa-panel-active)] px-3 py-1 text-[11px] font-semibold text-[var(--wa-text-secondary)]">
@@ -174,10 +197,8 @@ function GroupOverviewPage() {
 
           {/* Main layout: Activity/Actions on Left, Calendar/Events on Right */}
           <section className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-            
             {/* LEFT COLUMN: Main Activity Area */}
             <div className="space-y-6 wa-sidebar-enter">
-              
               {/* Teacher Quick Actions */}
               {isTeacher && (
                 <div>
@@ -192,9 +213,11 @@ function GroupOverviewPage() {
                       <div className="w-10 h-10 rounded-full bg-[var(--wa-panel-active)] flex items-center justify-center group-hover:bg-[var(--wa-green)] group-hover:text-white transition-colors text-[var(--wa-text-primary)]">
                         <CalendarPlus className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-semibold text-[var(--wa-text-primary)]">Add Event</span>
+                      <span className="text-xs font-semibold text-[var(--wa-text-primary)]">
+                        Add Event
+                      </span>
                     </Link>
-                    
+
                     <Link
                       to={`/groups/${groupId}/tasks`}
                       className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-4 hover:border-amber-500 hover:shadow-sm transition-all"
@@ -202,7 +225,9 @@ function GroupOverviewPage() {
                       <div className="w-10 h-10 rounded-full bg-[var(--wa-panel-active)] flex items-center justify-center group-hover:bg-amber-500 group-hover:text-white transition-colors text-[var(--wa-text-primary)]">
                         <CheckCircle className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-semibold text-[var(--wa-text-primary)]">Assign Task</span>
+                      <span className="text-xs font-semibold text-[var(--wa-text-primary)]">
+                        Assign Task
+                      </span>
                     </Link>
 
                     <Link
@@ -212,7 +237,9 @@ function GroupOverviewPage() {
                       <div className="w-10 h-10 rounded-full bg-[var(--wa-panel-active)] flex items-center justify-center group-hover:bg-[var(--wa-accent-sky)] group-hover:text-white transition-colors text-[var(--wa-text-primary)]">
                         <Briefcase className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-semibold text-[var(--wa-text-primary)]">New Project</span>
+                      <span className="text-xs font-semibold text-[var(--wa-text-primary)]">
+                        New Project
+                      </span>
                     </Link>
                   </div>
                 </div>
@@ -269,16 +296,12 @@ function GroupOverviewPage() {
                   ) : null}
                 </div>
               </div>
-
             </div>
 
             {/* RIGHT COLUMN: Calendar & Upcoming Events (Smaller) */}
             <aside className="space-y-4 wa-chat-enter">
-              
               {/* Real Calendar (Compact) */}
-              <div
-                className="rounded-2xl border border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-4"
-              >
+              <div className="rounded-2xl border border-[var(--wa-panel-border)] bg-[var(--wa-panel)] p-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-[13px] font-bold text-[var(--wa-text-primary)] uppercase tracking-wide">
                     {MONTH_NAMES[calMonth]} {calYear}
@@ -423,17 +446,25 @@ function GroupOverviewPage() {
                 </div>
                 <div className="divide-y divide-[var(--wa-panel-border)]">
                   {upcomingEvents.map((event) => (
-                    <div key={event._id} className="p-3 hover:bg-[var(--wa-panel-hover)] transition-colors">
+                    <div
+                      key={event._id}
+                      className="p-3 hover:bg-[var(--wa-panel-hover)] transition-colors"
+                    >
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`shrink-0 inline-block whitespace-nowrap text-[9px] uppercase tracking-wider px-2 py-0.5 rounded ${
-                          (event.type || "").toLowerCase() === "exam" 
-                            ? "bg-red-500/10 text-red-500 font-extrabold border border-red-500/20" 
-                            : "bg-[var(--wa-panel-active)] text-[var(--wa-text-secondary)] font-bold"
-                        }`}>
+                        <span
+                          className={`shrink-0 inline-block whitespace-nowrap text-[9px] uppercase tracking-wider px-2 py-0.5 rounded ${
+                            (event.type || "").toLowerCase() === "exam"
+                              ? "bg-red-500/10 text-red-500 font-extrabold border border-red-500/20"
+                              : "bg-[var(--wa-panel-active)] text-[var(--wa-text-secondary)] font-bold"
+                          }`}
+                        >
                           {event.type || "Event"}
                         </span>
                         <span className="text-[10px] text-[var(--wa-text-secondary)] font-medium">
-                          {new Date(event.startAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          {new Date(event.startAt).toLocaleDateString(
+                            undefined,
+                            { month: "short", day: "numeric" },
+                          )}
                         </span>
                       </div>
                       <div className="text-xs font-semibold text-[var(--wa-text-primary)] truncate">
@@ -442,7 +473,10 @@ function GroupOverviewPage() {
                       <div className="mt-1 flex items-center gap-1.5 text-[10px] text-[var(--wa-text-secondary)]">
                         <Clock className="w-3 h-3" />
                         <span className="truncate">
-                          {new Date(event.startAt).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                          {new Date(event.startAt).toLocaleTimeString(
+                            undefined,
+                            { hour: "numeric", minute: "2-digit" },
+                          )}
                         </span>
                       </div>
                     </div>

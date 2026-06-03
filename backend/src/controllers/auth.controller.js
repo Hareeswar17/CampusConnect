@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import cloudinary from "../lib/cloudinary.js";
 import { ENV } from "../lib/env.js";
+import { setCachedUser } from "../lib/authCache.js";
 
 export const signup = async (_, res) =>
   res.status(410).json({ message: "Signup is handled by Clerk" });
@@ -41,7 +42,11 @@ export const setUserRole = async (req, res) => {
           },
         },
         { new: true }
-      ).select("-password -teacherVerification.codeHash");
+      )
+        .select("-password -teacherVerification.codeHash")
+        .lean();
+
+      await setCachedUser(updatedUser);
 
       return res.status(200).json(updatedUser);
     }
@@ -52,7 +57,10 @@ export const setUserRole = async (req, res) => {
         userId,
         { roleSelected: true },
         { new: true }
-      ).select("-password -teacherVerification.codeHash");
+      )
+        .select("-password -teacherVerification.codeHash")
+        .lean();
+      await setCachedUser(updatedUser);
       return res.status(200).json(updatedUser);
     }
 
@@ -76,7 +84,11 @@ export const setUserRole = async (req, res) => {
         },
       },
       { new: true }
-    ).select("-password -teacherVerification.codeHash");
+    )
+      .select("-password -teacherVerification.codeHash")
+      .lean();
+
+    await setCachedUser(updatedUser);
 
     return res.status(200).json(updatedUser);
   } catch (error) {
@@ -98,11 +110,13 @@ export const updateProfile = async (req, res) => {
       userId,
       { profilePic: uploadResponse.secure_url },
       { new: true }
-    );
+    ).lean();
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    setCachedUser(updatedUser);
 
     res.status(200).json(updatedUser);
   } catch (error) {

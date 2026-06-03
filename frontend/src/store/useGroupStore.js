@@ -169,10 +169,11 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  fetchEvents: async (groupId) => {
+  fetchEvents: async (groupId, status = "upcoming", limit = 100) => {
     if (!groupId) return;
     try {
-      const res = await axiosInstance.get(`/groups/${groupId}/events`);
+      const qs = `status=${encodeURIComponent(status)}&limit=${encodeURIComponent(limit)}`;
+      const res = await axiosInstance.get(`/groups/${groupId}/events?${qs}`);
       set((state) => ({
         eventsByGroup: { ...state.eventsByGroup, [groupId]: res.data || [] },
       }));
@@ -246,10 +247,11 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  fetchTasks: async (groupId) => {
+  fetchTasks: async (groupId, status = "upcoming", limit = 100) => {
     if (!groupId) return;
     try {
-      const res = await axiosInstance.get(`/groups/${groupId}/tasks`);
+      const qs = `status=${encodeURIComponent(status)}&limit=${encodeURIComponent(limit)}`;
+      const res = await axiosInstance.get(`/groups/${groupId}/tasks?${qs}`);
       set((state) => ({
         tasksByGroup: { ...state.tasksByGroup, [groupId]: res.data || [] },
       }));
@@ -323,10 +325,11 @@ export const useGroupStore = create((set, get) => ({
     }
   },
 
-  fetchProjects: async (groupId) => {
+  fetchProjects: async (groupId, status = "upcoming", limit = 100) => {
     if (!groupId) return;
     try {
-      const res = await axiosInstance.get(`/groups/${groupId}/projects`);
+      const qs = `status=${encodeURIComponent(status)}&limit=${encodeURIComponent(limit)}`;
+      const res = await axiosInstance.get(`/groups/${groupId}/projects?${qs}`);
       set((state) => ({
         projectsByGroup: { ...state.projectsByGroup, [groupId]: res.data || [] },
       }));

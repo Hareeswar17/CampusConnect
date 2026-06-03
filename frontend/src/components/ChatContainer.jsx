@@ -48,6 +48,9 @@ function ChatContainer({ onBack }) {
     getMessagesByUserId,
     messages,
     isMessagesLoading,
+    isMessagesPaging,
+    messagesCursor,
+    hasMoreMessages,
     chats,
     allContacts,
     getAllContacts,
@@ -57,6 +60,7 @@ function ChatContainer({ onBack }) {
   } = useChatStore();
   const { authUser } = useAuthStore();
   const messageEndRef = useRef(null);
+  const scrollContainerRef = useRef(null);
   const [contextMenu, setContextMenu] = useState(null);
   const [forwardingMessage, setForwardingMessage] = useState(null);
   const [aiToolsMessageId, setAiToolsMessageId] = useState(null);
@@ -73,14 +77,16 @@ function ChatContainer({ onBack }) {
   }, [allContacts, chats, selectedUser]);
 
   useEffect(() => {
+    if (!selectedUser?._id) return;
     getMessagesByUserId(selectedUser._id);
   }, [selectedUser, getMessagesByUserId]);
 
   useEffect(() => {
+    if (isMessagesPaging) return;
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, isMessagesPaging]);
 
   useEffect(() => {
     if (!forwardingMessage) return;
@@ -177,15 +183,53 @@ function ChatContainer({ onBack }) {
     };
   }, []);
 
+  const loadOlderMessages = async () => {
+    if (!selectedUser?._id || !messagesCursor) return;
+    if (isMessagesPaging || isMessagesLoading || !hasMoreMessages) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    const prevScrollHeight = container.scrollHeight;
+    const prevScrollTop = container.scrollTop;
+
+    await getMessagesByUserId(selectedUser._id, {
+      before: messagesCursor,
+      append: true,
+    });
+
+    requestAnimationFrame(() => {
+      const updatedContainer = scrollContainerRef.current;
+      if (!updatedContainer) return;
+      const nextScrollHeight = updatedContainer.scrollHeight;
+      updatedContainer.scrollTop = nextScrollHeight - prevScrollHeight + prevScrollTop;
+    });
+  };
+
+  const handleScroll = (event) => {
+    if (event.currentTarget.scrollTop < 80) {
+      loadOlderMessages();
+    }
+  };
+
   return (
     <>
       <ChatHeader onBack={onBack} />
 
       {/* ── Message area ── */}
-      <div className="wa-chat-bg flex-1 overflow-y-auto overscroll-contain px-[5%] md:px-[7%] lg:px-[10%] py-4 relative">
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="wa-chat-bg flex-1 overflow-y-auto overscroll-contain px-[5%] md:px-[7%] lg:px-[10%] py-4 relative"
+      >
         <div className="relative z-10">
           {messages.length > 0 && !isMessagesLoading ? (
             <div className="space-y-[2px]">
+              {isMessagesPaging && (
+                <div className="flex items-center justify-center py-2">
+                  <div className="w-4 h-4 border-[2px] border-[var(--wa-green)] border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
               {messages.map((msg, idx) => {
                 const receiverTranslation = receiverTranslations[msg._id];
                 const isSelf = msg.senderId === authUser._id;

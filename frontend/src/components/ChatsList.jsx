@@ -8,9 +8,7 @@ import { CheckCheck } from "lucide-react";
 function ChatsList({ searchQuery = "" }) {
   const {
     getMyChatPartners,
-    getAllContacts,
     chats,
-    allContacts,
     isUsersLoading,
     setSelectedUser,
     selectedUser,
@@ -19,8 +17,7 @@ function ChatsList({ searchQuery = "" }) {
 
   useEffect(() => {
     getMyChatPartners();
-    getAllContacts();
-  }, [getMyChatPartners, getAllContacts]);
+  }, [getMyChatPartners]);
 
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
@@ -30,13 +27,6 @@ function ChatsList({ searchQuery = "" }) {
       source: "chat",
       unreadCount: chat.unreadCount || 0,
     })),
-    ...allContacts
-      .filter((contact) => !chats.some((chat) => chat._id === contact._id))
-      .map((contact) => ({
-        ...contact,
-        source: "contact",
-        unreadCount: 0,
-      })),
   ].filter((item) => {
     if (!normalizedQuery) return true;
     return (item.fullName || "").toLowerCase().includes(normalizedQuery);
@@ -99,7 +89,7 @@ function ChatsList({ searchQuery = "" }) {
                   <p className={`text-[13.5px] truncate leading-snug ${
                     hasUnread ? "text-[var(--wa-text-primary)] font-medium" : "text-[var(--wa-text-secondary)]"
                   }`}>
-                    {chat.lastMessage || (chat.source === "chat" ? "Tap to continue" : "Start a conversation")}
+                    {chat.lastMessage || "Tap to continue"}
                   </p>
                 </div>
                 {hasUnread && (

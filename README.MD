@@ -19,6 +19,8 @@ This repo contains two apps:
 - `PORT` (Render sets this automatically)
 - `MONGO_URI`
 - `CLIENT_URL` (your frontend Render URL, e.g. `https://campusconnect.onrender.com`)
+- `REDIS_URL` (use `rediss://` for managed Redis over TLS)
+- `REDIS_KEY_PREFIX` (optional, defaults to `campusconnect`)
 - `CLERK_SECRET_KEY`
 - `CLERK_WEBHOOK_SECRET`
 - `CLERK_PUBLISHABLE_KEY`
@@ -37,6 +39,10 @@ This repo contains two apps:
 - `AZURE_TRANSLATOR_REGION` (if translation is enabled)
 - `TEACHER_INVITE_CODE` (optional, default is `CAMPUS2026`)
 - `SERVE_STATIC=false` (set to `true` only for single-service deployments)
+
+BullMQ reuses the same Redis instance as the cache layer, so one `REDIS_URL` is enough.
+
+If you want a dedicated BullMQ worker process, run `npm run worker` from `backend/` after setting the Redis variables.
 
 ## Frontend (Render Static Site)
 
@@ -59,6 +65,9 @@ This repo contains two apps:
 cd backend
 npm install
 npm run dev
+
+# optional, in a second terminal for queue processing
+npm run worker
 ```
 
 **Frontend:**
