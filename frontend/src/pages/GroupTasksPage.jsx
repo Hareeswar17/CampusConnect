@@ -21,6 +21,16 @@ function GroupTasksPage() {
   } = useGroupStore();
   const group = groupById[groupId] || {};
   const tasks = tasksByGroup[groupId] || [];
+  const [tab, setTab] = useState("upcoming");
+  const [submittedIds, setSubmittedIds] = useState(() => {
+    try {
+      const uid = authUser?._id || "anon";
+      const raw = localStorage.getItem(`submitted:${uid}:tasks`);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [title, setTitle] = useState("");
@@ -32,8 +42,24 @@ function GroupTasksPage() {
 
   useEffect(() => {
     fetchGroup(groupId);
-    fetchTasks(groupId);
-  }, [fetchGroup, fetchTasks, groupId]);
+    fetchTasks(groupId, tab, 200);
+  }, [fetchGroup, fetchTasks, groupId, tab]);
+
+  const saveSubmitted = (next) => {
+    try {
+      const uid = authUser?._id || "anon";
+      localStorage.setItem(`submitted:${uid}:tasks`, JSON.stringify(next));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const markSubmitted = (taskId) => {
+    if (!taskId) return;
+    const next = Array.from(new Set([...(submittedIds || []), taskId]));
+    setSubmittedIds(next);
+    saveSubmitted(next);
+  };
 
   const resetForm = () => {
     setTitle("");
@@ -95,6 +121,24 @@ function GroupTasksPage() {
         <div className="max-w-6xl">
           <div className="text-xs text-[var(--wa-text-secondary)]">
             Groups / {group.title || "Group"} / Tasks
+          </div>
+
+          <div className="mt-4">
+            <div className="inline-flex rounded-md bg-[var(--wa-panel)] border border-[var(--wa-panel-border)]">
+              {[
+                { key: "upcoming", label: "Upcoming" },
+                { key: "completed", label: "Completed" },
+                { key: "all", label: "All" },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3 py-1 text-sm font-semibold ${tab === t.key ? "bg-[var(--wa-green)] text-white" : "text-[var(--wa-text-secondary)]"} rounded-md`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -276,13 +320,24 @@ function GroupTasksPage() {
                       <Link2 className="w-4 h-4" />
                       Open Google Form
                     </a>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 rounded-lg bg-[var(--wa-green)] px-3 py-2 text-xs font-semibold text-white"
-                    >
-                      <FileText className="w-4 h-4" />
-                      Submit Task
-                    </button>
+                    {submittedIds.includes(task._id) ? (
+                      <span className="inline-flex items-center gap-2 rounded-lg bg-[var(--wa-panel-active)] px-3 py-2 text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        <FileText className="w-4 h-4" /> Submitted
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (task.formUrl) window.open(task.formUrl, "_blank");
+                          markSubmitted(task._id);
+                          toast.success("Marked as submitted");
+                        }}
+                        className="inline-flex items-center gap-2 rounded-lg bg-[var(--wa-green)] px-3 py-2 text-xs font-semibold text-white"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Submit Task
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

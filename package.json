@@ -12,5 +12,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "bullmq": "^5.77.3",
+    "redis": "^5.12.1"
+  }
 }

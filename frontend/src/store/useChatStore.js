@@ -10,6 +10,8 @@ const normalizeId = (value) => {
   return value.toString ? value.toString() : "";
 };
 
+const MESSAGES_PAGE_SIZE = 30;
+
 export const useChatStore = create((set, get) => ({
   allContacts: [],
   discoverUsers: [],
@@ -17,12 +19,15 @@ export const useChatStore = create((set, get) => ({
   outgoingRequests: [],
   chats: [],
   messages: [],
+  messagesCursor: null,
+  hasMoreMessages: true,
   activeTab: "chats",
   selectedUser: null,
   replyingTo: null,
   isUsersLoading: false,
   isDiscoverLoading: false,
   isMessagesLoading: false,
+  isMessagesPaging: false,
   readReceiptMap: {},
   isSoundEnabled: JSON.parse(localStorage.getItem("isSoundEnabled")) === true,
 
@@ -132,27 +137,55 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  getMessagesByUserId: async (userId) => {
-    set({ isMessagesLoading: true });
+  getMessagesByUserId: async (userId, options = {}) => {
+    const { before = null, append = false } = options || {};
+
+    if (append) {
+      set({ isMessagesPaging: true });
+    } else {
+      set({
+        isMessagesLoading: true,
+        isMessagesPaging: false,
+        messagesCursor: null,
+        hasMoreMessages: true,
+      });
+    }
     try {
-      const res = await axiosInstance.get(`/messages/${userId}`);
+      const res = await axiosInstance.get(`/messages/${userId}`, {
+        params: {
+          limit: MESSAGES_PAGE_SIZE,
+          before,
+        },
+      });
+      const responseMessages = Array.isArray(res.data?.messages) ? res.data.messages : [];
+      const nextCursor = res.data?.nextCursor || null;
       const readReceiptMap = get().readReceiptMap;
-      const messagesWithReadState = res.data.map((msg) =>
+      const messagesWithReadState = responseMessages.map((msg) =>
         readReceiptMap[normalizeId(msg?._id)] ? { ...msg, isRead: true } : msg
       );
 
       set((state) => ({
-        messages: messagesWithReadState,
-        chats: state.chats.map((chat) =>
-          normalizeId(chat._id) === normalizeId(userId)
-            ? { ...chat, unreadCount: 0 }
-            : chat
-        ),
+        messages: append
+          ? [...messagesWithReadState, ...state.messages]
+          : messagesWithReadState,
+        messagesCursor: nextCursor,
+        hasMoreMessages: Boolean(nextCursor),
+        chats: append
+          ? state.chats
+          : state.chats.map((chat) =>
+              normalizeId(chat._id) === normalizeId(userId)
+                ? { ...chat, unreadCount: 0 }
+                : chat
+            ),
       }));
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
     } finally {
-      set({ isMessagesLoading: false });
+      if (append) {
+        set({ isMessagesPaging: false });
+      } else {
+        set({ isMessagesLoading: false });
+      }
     }
   },
 

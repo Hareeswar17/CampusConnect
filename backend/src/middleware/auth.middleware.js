@@ -2,6 +2,13 @@ import { getAuth } from "@clerk/express";
 import { createClerkClient } from "@clerk/backend";
 import User from "../models/User.js";
 import { ENV } from "../lib/env.js";
+import {
+  getCachedClerkProfile,
+  getCachedUserByClerkId,
+  getCachedUserByEmail,
+  setCachedClerkProfile,
+  setCachedUser,
+} from "../lib/authCache.js";
 
 const clerkClient = createClerkClient({ secretKey: ENV.CLERK_SECRET_KEY });
 
@@ -27,6 +34,11 @@ const getFullNameFromClaims = (claims) => {
 
 const getProfileFromClerkApi = async (clerkUserId) => {
   if (!clerkUserId) return { email: null, fullName: "User", profilePic: "" };
+
+  const cachedProfile = await getCachedClerkProfile(clerkUserId);
+  if (cachedProfile) {
+    return cachedProfile;
+  }
 
   const clerkUser = await clerkClient.users.getUser(clerkUserId);
   const primaryEmailId = clerkUser.primaryEmailAddressId;
@@ -56,9 +68,17 @@ export const protectRoute = async (req, res, next) => {
       return res.status(401).json({ message: "Unauthorized - No Clerk session" });
     }
 
-    let user = await User.findOne({ clerkId: clerkUserId }).select(
-      "-password -teacherVerification.codeHash"
-    );
+    let user = await getCachedUserByClerkId(clerkUserId);
+
+    if (!user) {
+      user = await User.findOne({ clerkId: clerkUserId })
+        .select("-password -teacherVerification.codeHash")
+        .lean();
+
+      if (user) {
+        await setCachedUser(user);
+      }
+    }
 
     if (!user) {
       let email = getEmailFromClaims(auth.sessionClaims);
@@ -71,6 +91,7 @@ export const protectRoute = async (req, res, next) => {
           email = email || clerkProfile.email;
           fullName = fullName === "User" ? clerkProfile.fullName : fullName;
           profilePic = clerkProfile.profilePic;
+          await setCachedClerkProfile(clerkUserId, clerkProfile);
         } catch (clerkError) {
           console.log("Error fetching user from Clerk API:", clerkError.message);
         }
@@ -82,7 +103,10 @@ export const protectRoute = async (req, res, next) => {
         });
       }
 
-      const existingUser = await User.findOne({ email });
+      const cachedExistingUser = await getCachedUserByEmail(email);
+      const existingUser = cachedExistingUser
+        ? await User.findById(cachedExistingUser._id)
+        : await User.findOne({ email });
 
       if (existingUser) {
         existingUser.clerkId = clerkUserId;
@@ -93,9 +117,10 @@ export const protectRoute = async (req, res, next) => {
           existingUser.profilePic = profilePic;
         }
         await existingUser.save();
-        user = await User.findById(existingUser._id).select(
-          "-password -teacherVerification.codeHash"
-        );
+        user = await User.findById(existingUser._id)
+          .select("-password -teacherVerification.codeHash")
+          .lean();
+        await setCachedUser(user);
       }
 
       if (!user) {
@@ -106,9 +131,10 @@ export const protectRoute = async (req, res, next) => {
           password: null,
           profilePic,
         });
-        user = await User.findById(createdUser._id).select(
-          "-password -teacherVerification.codeHash"
-        );
+        user = await User.findById(createdUser._id)
+          .select("-password -teacherVerification.codeHash")
+          .lean();
+        await setCachedUser(user);
       }
     }
 

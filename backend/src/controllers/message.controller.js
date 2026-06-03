@@ -1,97 +1,19 @@
 import cloudinary from "../lib/cloudinary.js";
-import { randomUUID } from "node:crypto";
 import { createClerkClient } from "@clerk/backend";
 import { ENV } from "../lib/env.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import Message from "../models/Message.js";
+import {
+  getConversationListForUser,
+  markConversationRead,
+  upsertConversationForMessage,
+} from "../lib/conversation.js";
 import User from "../models/User.js";
+import { AZURE_READY } from "../lib/translation.js";
+import { processTranslationRequest } from "../queues/translation.queue.js";
 
 const hasObjectId = (list, id) => list.some((item) => item.toString() === id.toString());
 const clerkClient = createClerkClient({ secretKey: ENV.CLERK_SECRET_KEY });
-
-const AZURE_READY =
-  Boolean(ENV.AZURE_TRANSLATOR_KEY) &&
-  Boolean(ENV.AZURE_TRANSLATOR_ENDPOINT) &&
-  Boolean(ENV.AZURE_TRANSLATOR_REGION) &&
-  Boolean(ENV.AZURE_SPEECH_KEY) &&
-  Boolean(ENV.AZURE_SPEECH_REGION);
-
-const TTS_PROFILE_BY_LANGUAGE = {
-  en: { voiceName: "en-GB-SoniaNeural", locale: "en-GB" },
-  es: { voiceName: "es-ES-ElviraNeural", locale: "es-ES" },
-  fr: { voiceName: "fr-FR-DeniseNeural", locale: "fr-FR" },
-  de: { voiceName: "de-DE-KatjaNeural", locale: "de-DE" },
-  hi: { voiceName: "hi-IN-SwaraNeural", locale: "hi-IN" },
-  mr: { voiceName: "mr-IN-AarohiNeural", locale: "mr-IN" },
-};
-
-const DEFAULT_TTS_PROFILE = {
-  // Multilingual fallback keeps voice output available for languages
-  // that don't have a dedicated mapping in this app yet.
-  voiceName: "en-US-AvaMultilingualNeural",
-  locale: "en-US",
-};
-
-const getTtsProfile = (targetLanguage) =>
-  TTS_PROFILE_BY_LANGUAGE[targetLanguage] || DEFAULT_TTS_PROFILE;
-
-const normalizeTranslatorEndpoint = (endpoint) => endpoint.replace(/\/+$/, "");
-
-const translateWithAzure = async ({ text, targetLanguage }) => {
-  const endpoint = normalizeTranslatorEndpoint(ENV.AZURE_TRANSLATOR_ENDPOINT);
-  const url = `${endpoint}/translate?api-version=3.0&to=${encodeURIComponent(targetLanguage)}`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Ocp-Apim-Subscription-Key": ENV.AZURE_TRANSLATOR_KEY,
-      "Ocp-Apim-Subscription-Region": ENV.AZURE_TRANSLATOR_REGION,
-      "Content-Type": "application/json",
-      "X-ClientTraceId": randomUUID(),
-    },
-    body: JSON.stringify([{ Text: text }]),
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Azure translator failed: ${response.status} ${errorBody}`);
-  }
-
-  const data = await response.json();
-  return data?.[0]?.translations?.[0]?.text || "";
-};
-
-const synthesizeSpeechWithAzure = async ({ text, targetLanguage }) => {
-  const profile = getTtsProfile(targetLanguage);
-  const ttsEndpoint = `https://${ENV.AZURE_SPEECH_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`;
-  const escapedText = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-
-  const ssml = `<speak version='1.0' xml:lang='${profile.locale}'><voice xml:lang='${profile.locale}' name='${profile.voiceName}'>${escapedText}</voice></speak>`;
-
-  const response = await fetch(ttsEndpoint, {
-    method: "POST",
-    headers: {
-      "Ocp-Apim-Subscription-Key": ENV.AZURE_SPEECH_KEY,
-      "Content-Type": "application/ssml+xml",
-      "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
-      "User-Agent": "CampusConnect",
-    },
-    body: ssml,
-  });
-
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(`Azure speech failed: ${response.status} ${errorBody}`);
-  }
-
-  const audioBuffer = Buffer.from(await response.arrayBuffer());
-  return `data:audio/mpeg;base64,${audioBuffer.toString("base64")}`;
-};
 
 const normalizeAudioDataUrl = (dataUrl) => {
   if (typeof dataUrl !== "string" || !dataUrl.startsWith("data:")) {
@@ -169,10 +91,10 @@ const enrichUserNameFromClerk = async (userDoc) => {
 export const getAllContacts = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const currentUser = await User.findById(loggedInUserId).select("friends");
-    const contacts = await User.find({ _id: { $in: currentUser?.friends || [] } }).select(
-      "-password -teacherVerification.codeHash"
-    );
+    const currentUser = await User.findById(loggedInUserId).select("friends").lean();
+    const contacts = await User.find({ _id: { $in: currentUser?.friends || [] } })
+      .select("_id fullName profilePic role")
+      .lean();
 
     res.status(200).json(contacts);
   } catch (error) {
@@ -187,7 +109,7 @@ export const getDiscoverUsers = async (req, res) => {
     const rawQuery = (req.query.q || "").toString().trim();
     const currentUser = await User.findById(loggedInUserId).select(
       "friends incomingFriendRequests outgoingFriendRequests"
-    );
+    ).lean();
 
     const excludedIds = [
       loggedInUserId,
@@ -206,7 +128,8 @@ export const getDiscoverUsers = async (req, res) => {
       _id: { $nin: excludedIds },
       $or: [{ fullName: searchRegex }, { email: searchRegex }],
     })
-      .select("-password -teacherVerification.codeHash")
+      .select("_id fullName profilePic email role")
+      .lean()
       .limit(25);
 
     res.status(200).json(users);
@@ -221,7 +144,8 @@ export const getFriendRequests = async (req, res) => {
     const loggedInUserId = req.user._id;
     const currentUser = await User.findById(loggedInUserId)
       .populate("incomingFriendRequests", "_id clerkId fullName profilePic email")
-      .populate("outgoingFriendRequests", "_id clerkId fullName profilePic email");
+      .populate("outgoingFriendRequests", "_id clerkId fullName profilePic email")
+      .lean();
 
     const incoming = await Promise.all(
       (currentUser?.incomingFriendRequests || []).map(enrichUserNameFromClerk)
@@ -357,40 +281,60 @@ export const getMessagesByUserId = async (req, res) => {
   try {
     const myId = req.user._id;
     const { id: userToChatId } = req.params;
+    const rawLimit = Number(req.query.limit) || 30;
+    const limit = Math.min(Math.max(rawLimit, 1), 100);
+    const beforeParam = (req.query.before || "").toString().trim();
+    const beforeDate = beforeParam ? new Date(beforeParam) : null;
+    const hasBefore = Boolean(beforeDate && !Number.isNaN(beforeDate.getTime()));
 
-    const unreadIncomingMessages = await Message.find({
-      senderId: userToChatId,
-      receiverId: myId,
-      isRead: { $ne: true },
-    }).select("_id");
+    if (!hasBefore) {
+      const unreadIncomingMessages = await Message.find({
+        senderId: userToChatId,
+        receiverId: myId,
+        isRead: { $ne: true },
+      }).select("_id");
 
-    if (unreadIncomingMessages.length > 0) {
-      const unreadMessageIds = unreadIncomingMessages.map((msg) => msg._id);
+      if (unreadIncomingMessages.length > 0) {
+        const unreadMessageIds = unreadIncomingMessages.map((msg) => msg._id);
 
-      await Message.updateMany(
-        { _id: { $in: unreadMessageIds } },
-        {
-          $set: { isRead: true },
+        await Message.updateMany(
+          { _id: { $in: unreadMessageIds } },
+          {
+            $set: { isRead: true },
+          }
+        );
+
+        const senderSocketId = getReceiverSocketId(userToChatId);
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("messagesRead", {
+            readerId: myId.toString(),
+            messageIds: unreadMessageIds.map((id) => id.toString()),
+          });
         }
-      );
-
-      const senderSocketId = getReceiverSocketId(userToChatId);
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("messagesRead", {
-          readerId: myId.toString(),
-          messageIds: unreadMessageIds.map((id) => id.toString()),
-        });
+          await markConversationRead({ senderId: userToChatId, receiverId: myId });
       }
     }
 
-    const messages = await Message.find({
+    const messageMatch = {
       $or: [
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-    }).sort({ createdAt: 1 });
+      ...(hasBefore ? { createdAt: { $lt: beforeDate } } : {}),
+    };
 
-    res.status(200).json(messages);
+    const page = await Message.find(messageMatch)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    const nextCursor =
+      page.length === limit
+        ? page[page.length - 1]?.createdAt?.toISOString?.() || null
+        : null;
+    const messages = page.reverse();
+
+    res.status(200).json({ messages, nextCursor });
   } catch (error) {
     console.log("Error in getMessages controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -416,7 +360,7 @@ export const sendMessage = async (req, res) => {
     if (!text && !image && !audio) {
       return res.status(400).json({ message: "Text, image or audio is required." });
     }
-    if (senderId.equals(receiverId)) {
+    if (senderId.toString() === receiverId.toString()) {
       return res.status(400).json({ message: "Cannot send messages to yourself." });
     }
     const receiverExists = await User.exists({ _id: receiverId });
@@ -424,22 +368,23 @@ export const sendMessage = async (req, res) => {
       return res.status(404).json({ message: "Receiver not found." });
     }
 
-    let imageUrl;
-    if (image) {
-      // upload base64 image to cloudinary
-      const uploadResponse = await cloudinary.uploader.upload(image);
-      imageUrl = uploadResponse.secure_url;
-    }
+    const imageUploadPromise = image
+      ? cloudinary.uploader.upload(image)
+      : Promise.resolve(null);
+    const audioUploadPromise = audio
+      ? cloudinary.uploader.upload(normalizeAudioDataUrl(audio), {
+          resource_type: "video",
+          folder: "chat-audio",
+        })
+      : Promise.resolve(null);
 
-    let audioUrl;
-    if (audio) {
-      const normalizedAudio = normalizeAudioDataUrl(audio);
-      const uploadResponse = await cloudinary.uploader.upload(normalizedAudio, {
-        resource_type: "video",
-        folder: "chat-audio",
-      });
-      audioUrl = uploadResponse.secure_url;
-    }
+    const [imageUploadResponse, audioUploadResponse] = await Promise.all([
+      imageUploadPromise,
+      audioUploadPromise,
+    ]);
+
+    const imageUrl = imageUploadResponse?.secure_url;
+    const audioUrl = audioUploadResponse?.secure_url;
 
     let translatedAudioUrl;
     if (translation?.mode === "voice") {
@@ -452,10 +397,12 @@ export const sendMessage = async (req, res) => {
         const targetLang = (translation?.targetLanguage || "en").toString().trim();
 
         if (textForSpeech) {
-          translatedAudioDataUrl = await synthesizeSpeechWithAzure({
+          const queuedTranslation = await processTranslationRequest({
             text: textForSpeech,
             targetLanguage: targetLang,
+            mode: "voice",
           });
+          translatedAudioDataUrl = queuedTranslation?.translatedAudio;
         }
       }
 
@@ -502,6 +449,12 @@ export const sendMessage = async (req, res) => {
     });
 
     await newMessage.save();
+
+    await upsertConversationForMessage({
+      senderId,
+      receiverId,
+      message: newMessage,
+    });
 
     const receiverSocketId = getReceiverSocketId(receiverId);
     if (receiverSocketId) {
@@ -587,12 +540,16 @@ export const translateText = async (req, res) => {
       return res.status(400).json({ message: "Target language is required." });
     }
 
-    const translatedText = await translateWithAzure({ text, targetLanguage });
+    const result = await processTranslationRequest({
+      text,
+      targetLanguage,
+      mode: "text",
+    });
 
     return res.status(200).json({
-      translatedText,
-      targetLanguage,
-      provider: "azure",
+      translatedText: result.translatedText,
+      targetLanguage: result.targetLanguage,
+      provider: result.provider,
     });
   } catch (error) {
     console.log("Error in translateText controller:", error.message);
@@ -616,14 +573,17 @@ export const translateVoice = async (req, res) => {
       return res.status(400).json({ message: "Target language is required." });
     }
 
-    const translatedText = await translateWithAzure({ text, targetLanguage });
-    const translatedAudio = await synthesizeSpeechWithAzure({ text: translatedText, targetLanguage });
+    const result = await processTranslationRequest({
+      text,
+      targetLanguage,
+      mode: "voice",
+    });
 
     return res.status(200).json({
-      translatedText,
-      translatedAudio,
-      targetLanguage,
-      provider: "azure",
+      translatedText: result.translatedText,
+      translatedAudio: result.translatedAudio,
+      targetLanguage: result.targetLanguage,
+      provider: result.provider,
     });
   } catch (error) {
     console.log("Error in translateVoice controller:", error.message);
@@ -635,54 +595,9 @@ export const getChatPartners = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
 
-    // find all the messages where the logged-in user is either sender or receiver
-    const messages = await Message.find({
-      $or: [{ senderId: loggedInUserId }, { receiverId: loggedInUserId }],
-    });
+    const chatPartners = await getConversationListForUser(loggedInUserId);
 
-    const chatPartnerIds = [
-      ...new Set(
-        messages.map((msg) =>
-          msg.senderId.toString() === loggedInUserId.toString()
-            ? msg.receiverId.toString()
-            : msg.senderId.toString()
-        )
-      ),
-    ];
-
-    const chatPartners = await User.find({ _id: { $in: chatPartnerIds } }).select(
-      "-password -teacherVerification.codeHash"
-    );
-
-    const unreadCounts = await Message.aggregate([
-      {
-        $match: {
-          receiverId: loggedInUserId,
-          isRead: { $ne: true },
-        },
-      },
-      {
-        $group: {
-          _id: "$senderId",
-          count: { $sum: 1 },
-        },
-      },
-    ]);
-
-    const unreadCountMap = unreadCounts.reduce((acc, item) => {
-      acc[item._id.toString()] = item.count;
-      return acc;
-    }, {});
-
-    const chatPartnersWithUnreadCount = chatPartners.map((partner) => {
-      const partnerObj = partner.toObject();
-      return {
-        ...partnerObj,
-        unreadCount: unreadCountMap[partner._id.toString()] || 0,
-      };
-    });
-
-    res.status(200).json(chatPartnersWithUnreadCount);
+    res.status(200).json(chatPartners);
   } catch (error) {
     console.error("Error in getChatPartners: ", error.message);
     res.status(500).json({ error: "Internal server error" });

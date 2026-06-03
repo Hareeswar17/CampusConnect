@@ -4,6 +4,13 @@ import express from "express";
 import { ENV } from "./env.js";
 import { socketAuthMiddleware } from "../middleware/socket.auth.middleware.js";
 import Message from "../models/Message.js";
+import {
+  getConversationKey,
+  getOnlineUserIds,
+  markConversationRead,
+  markUserOffline,
+  markUserOnline,
+} from "./conversation.js";
 
 const app = express();
 const server = http.createServer(app);
@@ -43,6 +50,57 @@ export function getReceiverSocketId(userId) {
 
 // this is for storig online users
 const userSocketMap = {}; // {userId:socketId}
+const pendingReadBatches = new Map();
+
+const broadcastOnlineUsers = async () => {
+  try {
+    const onlineUsers = await getOnlineUserIds();
+    io.emit("getOnlineUsers", onlineUsers);
+  } catch {
+    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  }
+};
+
+const flushReadBatch = async (key) => {
+  const batch = pendingReadBatches.get(key);
+  if (!batch) return;
+  pendingReadBatches.delete(key);
+
+  const { senderId, receiverId, messageIds } = batch;
+  try {
+    const unreadIncomingMessages = await Message.find({
+      senderId,
+      receiverId,
+      isRead: { $ne: true },
+      ...(messageIds.length > 0 ? { _id: { $in: [...messageIds] } } : {}),
+    }).select("_id");
+
+    if (unreadIncomingMessages.length === 0) {
+      return;
+    }
+
+    const unreadMessageIds = unreadIncomingMessages.map((msg) => msg._id);
+
+    await Message.updateMany(
+      { _id: { $in: unreadMessageIds } },
+      {
+        $set: { isRead: true },
+      }
+    );
+
+    await markConversationRead({ senderId, receiverId });
+
+    const senderSocketId = getReceiverSocketId(senderId);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messagesRead", {
+        readerId: receiverId.toString(),
+        messageIds: unreadMessageIds.map((id) => id.toString()),
+      });
+    }
+  } catch (error) {
+    console.log("Error in batched markMessagesRead socket handler:", error.message);
+  }
+};
 
 io.on("connection", (socket) => {
   console.log("A user connected", socket.user.fullName);
@@ -50,8 +108,9 @@ io.on("connection", (socket) => {
   const userId = socket.userId;
   userSocketMap[userId] = socket.id;
 
-  // io.emit() is used to send events to all connected clients
-  io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  void markUserOnline(userId).then(broadcastOnlineUsers).catch(() => {
+    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+  });
 
   // with socket.on we listen for events from clients
   socket.on("markMessagesRead", async (payload = {}) => {
@@ -66,37 +125,20 @@ io.on("connection", (socket) => {
         return;
       }
 
-      const readFilter = {
-        senderId,
-        receiverId,
-        isRead: { $ne: true },
-      };
-
-      if (messageIds.length > 0) {
-        readFilter._id = { $in: messageIds };
-      }
-
-      const unreadIncomingMessages = await Message.find(readFilter).select("_id");
-      if (unreadIncomingMessages.length === 0) {
+      const batchKey = getConversationKey(senderId, receiverId);
+      const existingBatch = pendingReadBatches.get(batchKey);
+      if (existingBatch) {
+        messageIds.forEach((id) => existingBatch.messageIds.add(id));
         return;
       }
 
-      const unreadMessageIds = unreadIncomingMessages.map((msg) => msg._id);
+      pendingReadBatches.set(batchKey, {
+        senderId,
+        receiverId,
+        messageIds: new Set(messageIds),
+      });
 
-      await Message.updateMany(
-        { _id: { $in: unreadMessageIds } },
-        {
-          $set: { isRead: true },
-        }
-      );
-
-      const senderSocketId = getReceiverSocketId(senderId);
-      if (senderSocketId) {
-        io.to(senderSocketId).emit("messagesRead", {
-          readerId: receiverId.toString(),
-          messageIds: unreadMessageIds.map((id) => id.toString()),
-        });
-      }
+      setTimeout(() => flushReadBatch(batchKey), 200);
     } catch (error) {
       console.log("Error in markMessagesRead socket handler:", error.message);
     }
@@ -119,7 +161,9 @@ io.on("connection", (socket) => {
     if (userSocketMap[userId] === socket.id) {
       delete userSocketMap[userId];
     }
-    io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    void markUserOffline(userId).then(broadcastOnlineUsers).catch(() => {
+      io.emit("getOnlineUsers", Object.keys(userSocketMap));
+    });
   });
 });
 

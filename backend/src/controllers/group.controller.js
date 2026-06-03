@@ -264,7 +264,28 @@ export const listEvents = async (req, res) => {
     const group = await requireGroup(req.params.groupId);
     if (!group) return res.status(404).json({ message: "Group not found" });
 
-    const events = await GroupEvent.find({ groupId: group._id }).sort({ startAt: 1 });
+    const status = (req.query.status || "upcoming").toLowerCase();
+    const now = new Date();
+    const completedCutoff = { $lt: now };
+    const upcomingCutoff = { $gte: now };
+
+    const filter = { groupId: group._id };
+    if (status === "completed") {
+      filter.$or = [{ endAt: completedCutoff }, { endAt: null, startAt: completedCutoff }];
+    } else if (status === "all") {
+      // no extra filter
+    } else {
+      filter.$or = [{ endAt: upcomingCutoff }, { endAt: null, startAt: upcomingCutoff }];
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
+    const projection = "title startAt endAt type location coverImage createdBy description links";
+    const events = await GroupEvent.find(filter)
+      .sort({ startAt: 1 })
+      .limit(limit)
+      .select(projection)
+      .lean();
+
     res.status(200).json(events);
   } catch (error) {
     console.log("Error listing events:", error);
@@ -369,7 +390,27 @@ export const listTasks = async (req, res) => {
     const group = await requireGroup(req.params.groupId);
     if (!group) return res.status(404).json({ message: "Group not found" });
 
-    const tasks = await GroupTask.find({ groupId: group._id }).sort({ dueAt: 1 });
+    const status = (req.query.status || "upcoming").toLowerCase();
+    const now = new Date();
+    const completedCutoff = { $lt: now };
+    const upcomingCutoff = { $gte: now };
+    const filter = { groupId: group._id };
+    if (status === "completed") {
+      filter.dueAt = completedCutoff;
+    } else if (status === "all") {
+      // no extra filter
+    } else {
+      filter.dueAt = upcomingCutoff;
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
+    const projection = "title dueAt points formUrl status description createdBy";
+    const tasks = await GroupTask.find(filter)
+      .sort({ dueAt: 1 })
+      .limit(limit)
+      .select(projection)
+      .lean();
+
     res.status(200).json(tasks);
   } catch (error) {
     console.log("Error listing tasks:", error);
@@ -466,7 +507,27 @@ export const listProjects = async (req, res) => {
     const group = await requireGroup(req.params.groupId);
     if (!group) return res.status(404).json({ message: "Group not found" });
 
-    const projects = await GroupProject.find({ groupId: group._id }).sort({ deadline: 1 });
+    const status = (req.query.status || "upcoming").toLowerCase();
+    const now = new Date();
+    const completedCutoff = { $lt: now };
+    const upcomingCutoff = { $gte: now };
+    const filter = { groupId: group._id };
+    if (status === "completed") {
+      filter.deadline = completedCutoff;
+    } else if (status === "all") {
+      // no extra filter
+    } else {
+      filter.deadline = upcomingCutoff;
+    }
+
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 1000);
+    const projection = "title deadline type maxMembers description createdBy";
+    const projects = await GroupProject.find(filter)
+      .sort({ deadline: 1 })
+      .limit(limit)
+      .select(projection)
+      .lean();
+
     res.status(200).json(projects);
   } catch (error) {
     console.log("Error listing projects:", error);

@@ -21,6 +21,16 @@ function GroupProjectsPage() {
   } = useGroupStore();
   const group = groupById[groupId] || {};
   const projects = projectsByGroup[groupId] || [];
+  const [tab, setTab] = useState("upcoming");
+  const [submittedIds, setSubmittedIds] = useState(() => {
+    try {
+      const uid = authUser?._id || "anon";
+      const raw = localStorage.getItem(`submitted:${uid}:projects`);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [title, setTitle] = useState("");
@@ -32,8 +42,24 @@ function GroupProjectsPage() {
 
   useEffect(() => {
     fetchGroup(groupId);
-    fetchProjects(groupId);
-  }, [fetchGroup, fetchProjects, groupId]);
+    fetchProjects(groupId, tab, 200);
+  }, [fetchGroup, fetchProjects, groupId, tab]);
+
+  const saveSubmitted = (next) => {
+    try {
+      const uid = authUser?._id || "anon";
+      localStorage.setItem(`submitted:${uid}:projects`, JSON.stringify(next));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const markSubmitted = (projectId) => {
+    if (!projectId) return;
+    const next = Array.from(new Set([...(submittedIds || []), projectId]));
+    setSubmittedIds(next);
+    saveSubmitted(next);
+  };
 
   const resetForm = () => {
     setTitle("");
@@ -95,6 +121,24 @@ function GroupProjectsPage() {
         <div className="max-w-6xl">
           <div className="text-xs text-[var(--wa-text-secondary)]">
             Groups / {group.title || "Group"} / Projects
+          </div>
+
+          <div className="mt-4">
+            <div className="inline-flex rounded-md bg-[var(--wa-panel)] border border-[var(--wa-panel-border)]">
+              {[
+                { key: "upcoming", label: "Upcoming" },
+                { key: "completed", label: "Completed" },
+                { key: "all", label: "All" },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-3 py-1 text-sm font-semibold ${tab === t.key ? "bg-[var(--wa-green)] text-white" : "text-[var(--wa-text-secondary)]"} rounded-md`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -274,6 +318,26 @@ function GroupProjectsPage() {
                     {project.type === "Team"
                       ? `Up to ${project.maxMembers || 1} members per team.`
                       : "Individual submission only."}
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    {submittedIds.includes(project._id) ? (
+                      <span className="inline-flex items-center gap-2 rounded-lg bg-[var(--wa-panel-active)] px-3 py-2 text-xs font-semibold text-[var(--wa-text-secondary)]">
+                        Submitted
+                      </span>
+                    ) : (
+                      !isTeacher && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            markSubmitted(project._id);
+                            toast.success("Marked project as submitted");
+                          }}
+                          className="inline-flex items-center gap-2 rounded-lg bg-[var(--wa-green)] px-3 py-2 text-xs font-semibold text-white"
+                        >
+                          Mark Submitted
+                        </button>
+                      )
+                    )}
                   </div>
                 </div>
               ))}

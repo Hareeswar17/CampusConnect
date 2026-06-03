@@ -12,6 +12,7 @@ import groupRoutes from "./routes/group.route.js";
 import { connectDB } from "./lib/db.js";
 import { ENV } from "./lib/env.js";
 import { app, server } from "./lib/socket.js";
+import { startJobWorkers } from "./queues/translation.queue.js";
 
 const __dirname = path.resolve();
 
@@ -71,4 +72,7 @@ if (shouldServeStatic) {
 server.listen(PORT, () => {
   console.log("Server running on port: " + PORT);
   connectDB();
+  startJobWorkers().catch((error) => {
+    console.log("BullMQ workers could not be started:", error.message);
+  });
 });
