@@ -11,7 +11,7 @@ services:
       - key: SERVE_STATIC
         value: "true"
       - key: CLIENT_URL
-        value: https://your-service.onrender.com
+        value: https://campusconnect-1-olvk.onrender.com
       - key: MONGO_URI
         sync: false
       - key: CLERK_SECRET_KEY
@@ -50,3 +50,7 @@ services:
         sync: false
       - key: TEACHER_INVITE_CODE
         sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: REDIS_KEY_PREFIX
+        sync: campusconnect
