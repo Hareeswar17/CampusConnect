@@ -88,3 +88,30 @@ If you want the backend to serve the frontend build from the same service:
 4. Set `SERVE_STATIC=true` and `NODE_ENV=production`.
 5. Set `CLIENT_URL` to the same Render URL as the backend.
 6. Set `VITE_CLERK_PUBLISHABLE_KEY` for the frontend build. You can omit `VITE_API_BASE_URL` so the app uses same-origin `/api`.
+
+## Database ER Diagram
+
+
+### Database ER Diagram (visual)
+
+The exported Eraser diagram is embedded below. If you prefer the editable Mermaid version, see the repository history.
+
+![CampusConnect Database ER Diagram](./docs/diagram-export-04-06-2026-12_05_35.png)
+
+This diagram shows the MongoDB data model behind CampusConnect. `User` is the central collection, with direct chat handled by `Message` and `Conversation`. Group-based features branch from `Group` into `GroupMessage`, `GroupResource`, `GroupEvent`, `GroupTask`, `GroupProject`, `GroupDoubt`, and `GroupDoubtComment`.
+
+The main relationships are:
+
+- `User` sends and receives many `Message` documents.
+- `Conversation` represents a 1:1 chat thread between exactly two users.
+- `Group` is created by a user and has many teachers and members.
+- `GroupMessage`, `GroupResource`, `GroupEvent`, `GroupTask`, `GroupProject`, `GroupDoubt`, and `GroupDoubtComment` all belong to a `Group` through `groupId`.
+- `GroupDoubt` can be resolved by a user and keeps an embedded audit log of status changes.
+- `Message` supports reply references through `replyTo.messageId` and includes translation metadata for text and voice translations.
+
+Key indexed or unique fields are also highlighted in the diagram:
+
+- `User.email` and `User.clerkId` are unique.
+- `Conversation.participantsKey` is unique.
+- `Message` is indexed for direct chat history and unread lookups.
+- Several group collections are indexed by `groupId` for fast per-group queries.
