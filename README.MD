@@ -160,7 +160,7 @@ This System Architecture section complements the Database ER Diagram above and t
 
 ## Stateless Interaction Diagram
 
-### Stateless Interaction Diagram (Mermaid)
+### Stateless Interaction Diagram (Visual)
 
 The following Mermaid diagram shows the stateless request/response and event flows in CampusConnect: how users interact with the frontend, how the frontend talks to the Express API and Socket.IO, and how background workers (translation, media processing) are dispatched via BullMQ/Redis.
 
